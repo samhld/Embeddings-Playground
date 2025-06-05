@@ -260,25 +260,15 @@ export default function TextComparisonTable() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span>Query Text</span>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => queryFileRef.current?.click()}
-                        className="text-xs h-6"
-                      >
-                        <Upload className="mr-1 h-3 w-3" />
-                        Upload
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={addQueryText}
-                        className="text-xs h-6"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => queryFileRef.current?.click()}
+                      className="text-xs h-6"
+                    >
+                      <Upload className="mr-1 h-3 w-3" />
+                      Upload
+                    </Button>
                   </div>
                   <input
                     ref={queryFileRef}
@@ -293,25 +283,15 @@ export default function TextComparisonTable() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span>Stored Text</span>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => storedFileRef.current?.click()}
-                        className="text-xs h-6"
-                      >
-                        <Upload className="mr-1 h-3 w-3" />
-                        Upload
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={addStoredText}
-                        className="text-xs h-6"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => storedFileRef.current?.click()}
+                      className="text-xs h-6"
+                    >
+                      <Upload className="mr-1 h-3 w-3" />
+                      Upload
+                    </Button>
                   </div>
                   <input
                     ref={storedFileRef}
