@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Play, Upload, Plus, Trash2 } from "lucide-react";
+import { Play, Upload, Plus, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -161,6 +161,59 @@ export default function TextComparisonTable() {
         await generateDistanceForPair(i, i, model);
       }
     }
+  };
+
+  const downloadCSV = () => {
+    const activeModels = Object.values(selectedModels).filter(Boolean);
+    const maxLength = Math.max(queryTexts.length, storedTexts.length);
+    
+    // Create CSV headers
+    const headers = ['Row', 'Query Text', 'Stored Text'];
+    activeModels.forEach(model => {
+      headers.push(`${model} Distance`);
+    });
+    
+    // Create CSV rows
+    const csvRows = [headers.join(',')];
+    
+    for (let i = 0; i < maxLength; i++) {
+      const queryText = queryTexts[i] || '';
+      const storedText = storedTexts[i] || '';
+      
+      const row = [
+        i + 1,
+        `"${queryText.replace(/"/g, '""')}"`, // Escape quotes in CSV
+        `"${storedText.replace(/"/g, '""')}"` // Escape quotes in CSV
+      ];
+      
+      activeModels.forEach(model => {
+        const key = `${i}-${i}-${model}`;
+        const distance = distances[key];
+        row.push(distance !== null && distance !== undefined ? distance.toFixed(4) : '');
+      });
+      
+      csvRows.push(row.join(','));
+    }
+    
+    // Create and download file
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `embeddings-comparison-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    toast({
+      title: "CSV Downloaded",
+      description: "Table data has been exported to CSV file",
+    });
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'query' | 'stored') => {
@@ -329,14 +382,24 @@ export default function TextComparisonTable() {
             <h2 className="text-lg font-semibold text-slate-800">Text Comparison Table</h2>
             <p className="text-sm text-slate-600 mt-1">Compare query texts against stored texts across multiple models</p>
           </div>
-          <Button 
-            onClick={generateComparisons}
-            disabled={isGenerating}
-            className="px-6"
-          >
-            <Play className="mr-2 h-4 w-4" />
-            {isGenerating ? "Generating..." : "Show Cosine Distances"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={downloadCSV}
+              className="px-4"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download CSV
+            </Button>
+            <Button 
+              onClick={generateComparisons}
+              disabled={isGenerating}
+              className="px-6"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              {isGenerating ? "Generating..." : "Show Cosine Distances"}
+            </Button>
+          </div>
         </div>
       </div>
 
