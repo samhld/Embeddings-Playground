@@ -438,6 +438,22 @@ export default function TextComparisonTable() {
             ))}
           </tbody>
         </table>
+        
+        {/* Add Row Button */}
+        <div className="p-4 border-t border-slate-200">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              addQueryText();
+              addStoredText();
+            }}
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-800"
+          >
+            <Plus className="h-4 w-4" />
+            Add Row
+          </Button>
+        </div>
       </div>
     </div>
   );
