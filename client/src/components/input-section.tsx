@@ -7,8 +7,6 @@ import { countTokens } from "@/lib/token-counter";
 interface InputSectionProps {
   inputText: string;
   setInputText: (text: string) => void;
-  textChunks: string;
-  setTextChunks: (chunks: string) => void;
 }
 
 export default function InputSection({ 
