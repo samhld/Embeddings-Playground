@@ -293,10 +293,22 @@ export default function TextComparisonTable() {
     const activeModels = Object.values(selectedModels).filter(Boolean);
     const maxLength = Math.max(queryTexts.length, storedTexts.length);
     
+    // Check if there's any distance data
+    const hasDistanceData = Object.keys(distances).some(key => distances[key] !== null && distances[key] !== undefined);
+    
+    if (!hasDistanceData) {
+      toast({
+        title: "No data to download",
+        description: "Please generate some distance calculations first before downloading.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Create CSV headers
-    const headers = ['Row', 'Query Text', 'Stored Text'];
+    const headers = ['Query Text', 'Stored Text'];
     activeModels.forEach(model => {
-      headers.push(`${model} Distance`);
+      headers.push(model);
     });
     
     // Create CSV rows
@@ -307,7 +319,6 @@ export default function TextComparisonTable() {
       const storedText = storedTexts[i] || '';
       
       const row = [
-        i + 1,
         `"${queryText.replace(/"/g, '""')}"`, // Escape quotes in CSV
         `"${storedText.replace(/"/g, '""')}"` // Escape quotes in CSV
       ];
@@ -320,6 +331,14 @@ export default function TextComparisonTable() {
       
       csvRows.push(row.join(','));
     }
+    
+    // Add optimal thresholds at the bottom
+    const thresholdRow = ['Optimal Threshold', ''];
+    activeModels.forEach(model => {
+      const threshold = optimalThresholds[model];
+      thresholdRow.push(threshold !== null && threshold !== undefined ? threshold.toFixed(4) : '');
+    });
+    csvRows.push(thresholdRow.join(','));
     
     // Create and download file
     const csvContent = csvRows.join('\n');
@@ -338,7 +357,7 @@ export default function TextComparisonTable() {
     
     toast({
       title: "CSV Downloaded",
-      description: "Table data has been exported to CSV file",
+      description: `Exported ${maxLength} rows of comparison data with optimal thresholds`,
     });
   };
 
