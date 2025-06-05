@@ -864,7 +864,6 @@ export default function TextComparisonTable() {
 
       {/* Inline Plot Section */}
       {showPlot && (() => {
-        const { relatedDistances, unrelatedDistances } = getPlotData();
         const activeModels = Object.values(selectedModels).filter(Boolean);
         
         // Get data by model
@@ -888,9 +887,10 @@ export default function TextComparisonTable() {
           }
         });
 
-        const hasData = Object.values(modelData).some(data => data.related.length > 0 || data.unrelated.length > 0);
+        // Check if we have any distance data at all
+        const totalDistances = Object.keys(distances).filter(key => distances[key] !== null && distances[key] !== undefined).length;
         
-        if (!hasData) {
+        if (totalDistances === 0) {
           return (
             <div className="border-t border-slate-200 p-6 bg-slate-50">
               <div className="text-center text-slate-500">No distance data available for plotting</div>
