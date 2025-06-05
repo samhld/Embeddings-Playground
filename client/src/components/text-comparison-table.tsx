@@ -875,25 +875,37 @@ export default function TextComparisonTable() {
         Object.keys(distances).forEach(key => {
           const distance = distances[key];
           if (distance !== null && distance !== undefined) {
-            const [rowIndexStr, , model] = key.split('-');
-            const rowIndex = parseInt(rowIndexStr);
-            if (activeModels.includes(model)) {
-              if (relatedRows[rowIndex]) {
-                modelData[model].related.push(distance);
-              } else {
-                modelData[model].unrelated.push(distance);
+            // Key format is: rowIndex-distance-model
+            const keyParts = key.split('-');
+            if (keyParts.length >= 3) {
+              const rowIndex = parseInt(keyParts[0]);
+              const model = keyParts.slice(2).join('-'); // Handle model names with dashes
+              
+              if (activeModels.includes(model)) {
+                if (relatedRows[rowIndex]) {
+                  modelData[model].related.push(distance);
+                } else {
+                  modelData[model].unrelated.push(distance);
+                }
               }
             }
           }
         });
 
+        // Debug logging
+        console.log('Debug plot data:');
+        console.log('distances object:', distances);
+        console.log('activeModels:', activeModels);
+        console.log('relatedRows:', relatedRows);
+        console.log('modelData:', modelData);
+        
         // Check if we have any distance data at all
         const totalDistances = Object.keys(distances).filter(key => distances[key] !== null && distances[key] !== undefined).length;
         
         if (totalDistances === 0) {
           return (
             <div className="border-t border-slate-200 p-6 bg-slate-50">
-              <div className="text-center text-slate-500">No distance data available for plotting</div>
+              <div className="text-center text-slate-500">No distance data available for plotting (found {totalDistances} distances)</div>
             </div>
           );
         }
