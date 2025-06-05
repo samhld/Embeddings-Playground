@@ -48,8 +48,8 @@ export default function TextComparisonTable() {
   // Track optimal thresholds for each model
   const [optimalThresholds, setOptimalThresholds] = useState<{ [key: string]: number | null }>({});
   
-  // Track plot dialog state
-  const [showPlotDialog, setShowPlotDialog] = useState(false);
+  // Track plot visibility state
+  const [showPlot, setShowPlot] = useState(false);
   
   const queryFileRef = useRef<HTMLInputElement>(null);
   const storedFileRef = useRef<HTMLInputElement>(null);
@@ -534,8 +534,8 @@ export default function TextComparisonTable() {
       return;
     }
 
-    // Open the plot dialog
-    setShowPlotDialog(true);
+    // Toggle the plot visibility
+    setShowPlot(!showPlot);
   };
 
   // Prepare data for plotting
@@ -862,172 +862,245 @@ export default function TextComparisonTable() {
         </div>
       </div>
 
-      {/* Plot Data Dialog */}
-      <Dialog open={showPlotDialog} onOpenChange={setShowPlotDialog}>
-        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Distance Distribution Analysis
-            </DialogTitle>
-          </DialogHeader>
-          
-          {(() => {
-            const { relatedDistances, unrelatedDistances } = getPlotData();
-            const histogramData = createHistogramData(relatedDistances, unrelatedDistances);
-            const relatedBoxPlot = calculateBoxPlotStats(relatedDistances);
-            const unrelatedBoxPlot = calculateBoxPlotStats(unrelatedDistances);
-            
-            if (!histogramData) {
-              return <div className="p-4 text-center text-slate-500">No distance data available for plotting</div>;
+      {/* Inline Plot Section */}
+      {showPlot && (() => {
+        const { relatedDistances, unrelatedDistances } = getPlotData();
+        const activeModels = Object.values(selectedModels).filter(Boolean);
+        
+        // Get data by model
+        const modelData: { [model: string]: { related: number[], unrelated: number[] } } = {};
+        activeModels.forEach(model => {
+          modelData[model] = { related: [], unrelated: [] };
+        });
+
+        Object.keys(distances).forEach(key => {
+          const distance = distances[key];
+          if (distance !== null && distance !== undefined) {
+            const [rowIndexStr, , model] = key.split('-');
+            const rowIndex = parseInt(rowIndexStr);
+            if (activeModels.includes(model)) {
+              if (relatedRows[rowIndex]) {
+                modelData[model].related.push(distance);
+              } else {
+                modelData[model].unrelated.push(distance);
+              }
             }
+          }
+        });
 
-            const maxCount = Math.max(...histogramData.relatedBins, ...histogramData.unrelatedBins);
-            const chartHeight = 300;
+        const hasData = Object.values(modelData).some(data => data.related.length > 0 || data.unrelated.length > 0);
+        
+        if (!hasData) {
+          return (
+            <div className="border-t border-slate-200 p-6 bg-slate-50">
+              <div className="text-center text-slate-500">No distance data available for plotting</div>
+            </div>
+          );
+        }
 
-            return (
-              <div className="space-y-8">
-                {/* Histogram */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Histogram - Distance Distribution</h3>
-                  <div className="bg-slate-50 p-4 rounded-lg">
-                    <div className="flex items-end justify-center space-x-1" style={{ height: chartHeight }}>
-                      {histogramData.binLabels.map((label, i) => {
-                        const relatedHeight = maxCount > 0 ? (histogramData.relatedBins[i] / maxCount) * (chartHeight - 60) : 0;
-                        const unrelatedHeight = maxCount > 0 ? (histogramData.unrelatedBins[i] / maxCount) * (chartHeight - 60) : 0;
+        return (
+          <div className="border-t border-slate-200 bg-slate-50">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Distance Distribution by Model
+                </h3>
+                <div className="flex items-center space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                    <span className="text-sm font-medium">Related</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-red-500 rounded"></div>
+                    <span className="text-sm font-medium">Unrelated</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Histogram by Model */}
+              <div className="bg-white p-6 rounded-lg border">
+                <h4 className="text-md font-medium mb-4">Histogram - Distance Distribution by Model</h4>
+                <div className="flex items-end justify-center space-x-8" style={{ height: 320 }}>
+                  {activeModels.map((model) => {
+                    const data = modelData[model];
+                    const allModelDistances = [...data.related, ...data.unrelated];
+                    
+                    if (allModelDistances.length === 0) {
+                      return (
+                        <div key={model} className="flex flex-col items-center space-y-2">
+                          <div style={{ height: 260 }} className="flex items-end">
+                            <div className="text-sm text-slate-400">No data</div>
+                          </div>
+                          <div className="text-xs text-slate-600 font-medium text-center w-24 break-words">
+                            {model}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const relatedCount = data.related.length;
+                    const unrelatedCount = data.unrelated.length;
+                    const maxCount = Math.max(relatedCount, unrelatedCount, 1);
+                    
+                    const relatedHeight = (relatedCount / maxCount) * 240;
+                    const unrelatedHeight = (unrelatedCount / maxCount) * 240;
+
+                    return (
+                      <div key={model} className="flex flex-col items-center space-y-2">
+                        <div className="flex items-end space-x-2" style={{ height: 260 }}>
+                          {/* Related bar */}
+                          <div className="flex flex-col items-center space-y-1">
+                            <div 
+                              className="bg-blue-500 w-12 transition-all hover:bg-blue-600 rounded-t" 
+                              style={{ height: relatedHeight }}
+                              title={`Related: ${relatedCount} values`}
+                            />
+                            <div className="text-xs text-slate-600 font-medium">R</div>
+                          </div>
+                          {/* Unrelated bar */}
+                          <div className="flex flex-col items-center space-y-1">
+                            <div 
+                              className="bg-red-500 w-12 transition-all hover:bg-red-600 rounded-t" 
+                              style={{ height: unrelatedHeight }}
+                              title={`Unrelated: ${unrelatedCount} values`}
+                            />
+                            <div className="text-xs text-slate-600 font-medium">U</div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-600 font-medium text-center w-24 break-words">
+                          {model}
+                        </div>
+                        <div className="text-xs text-slate-500 text-center">
+                          R:{relatedCount} U:{unrelatedCount}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Box Plots */}
+              <div className="bg-white p-6 rounded-lg border mt-6">
+                <h4 className="text-md font-medium mb-4">Box Plots - Statistical Summary</h4>
+                <div className="space-y-6">
+                  {/* Related Box Plots */}
+                  <div>
+                    <h5 className="text-sm font-medium text-blue-600 mb-3">Related Distances</h5>
+                    <div className="space-y-3">
+                      {activeModels.map(model => {
+                        const data = modelData[model].related;
+                        const boxPlot = calculateBoxPlotStats(data);
+                        
+                        if (!boxPlot) {
+                          return (
+                            <div key={model} className="flex items-center space-x-4">
+                              <div className="w-32 text-sm font-medium">{model}</div>
+                              <div className="text-sm text-slate-400">No related data</div>
+                            </div>
+                          );
+                        }
+
+                        const scale = 300 / (boxPlot.max - boxPlot.min || 1);
+                        const offset = 25;
                         
                         return (
-                          <div key={i} className="flex flex-col items-center space-y-1">
-                            <div className="flex items-end space-x-1" style={{ height: chartHeight - 60 }}>
-                              {/* Related bar */}
-                              <div 
-                                className="bg-blue-500 w-8 transition-all hover:bg-blue-600" 
-                                style={{ height: relatedHeight }}
-                                title={`Related: ${histogramData.relatedBins[i]} values`}
-                              />
-                              {/* Unrelated bar */}
-                              <div 
-                                className="bg-red-500 w-8 transition-all hover:bg-red-600" 
-                                style={{ height: unrelatedHeight }}
-                                title={`Unrelated: ${histogramData.unrelatedBins[i]} values`}
-                              />
-                            </div>
-                            <div className="text-xs text-slate-600 rotate-45 origin-left w-12 text-center">
-                              {label}
+                          <div key={model} className="flex items-center space-x-4">
+                            <div className="w-32 text-sm font-medium">{model}</div>
+                            <svg width="350" height="40" className="border rounded">
+                              <g>
+                                {/* Box plot elements */}
+                                <line x1={offset} y1={20} x2={offset + 300} y2={20} stroke="#3b82f6" strokeWidth="1" />
+                                <rect 
+                                  x={offset + (boxPlot.q1 - boxPlot.min) * scale} 
+                                  y={10} 
+                                  width={(boxPlot.q3 - boxPlot.q1) * scale} 
+                                  height={20} 
+                                  fill="#3b82f6" 
+                                  fillOpacity="0.3" 
+                                  stroke="#3b82f6" 
+                                  strokeWidth="2" 
+                                />
+                                <line 
+                                  x1={offset + (boxPlot.median - boxPlot.min) * scale} 
+                                  y1={10} 
+                                  x2={offset + (boxPlot.median - boxPlot.min) * scale} 
+                                  y2={30} 
+                                  stroke="#1d4ed8" 
+                                  strokeWidth="3" 
+                                />
+                              </g>
+                            </svg>
+                            <div className="text-xs text-slate-600">
+                              {boxPlot.min.toFixed(3)} - {boxPlot.max.toFixed(3)} (n={boxPlot.count})
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="flex justify-center mt-4 space-x-6">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                        <span className="text-sm">Related ({relatedDistances.length} samples)</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-red-500 rounded"></div>
-                        <span className="text-sm">Unrelated ({unrelatedDistances.length} samples)</span>
-                      </div>
-                    </div>
                   </div>
-                </div>
 
-                {/* Box Plots */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Box Plots - Statistical Summary</h3>
-                  <div className="bg-slate-50 p-4 rounded-lg">
-                    <div className="space-y-6">
-                      {/* Related Box Plot */}
-                      {relatedBoxPlot && (
-                        <div>
-                          <h4 className="text-sm font-medium text-blue-600 mb-2">Related Distances</h4>
-                          <div className="relative">
-                            <svg width="400" height="80" className="border rounded">
-                              {(() => {
-                                const scale = 350 / (relatedBoxPlot.max - relatedBoxPlot.min);
-                                const offset = 25;
-                                const boxY = 25;
-                                const boxHeight = 30;
-                                
-                                const minX = offset + (relatedBoxPlot.min - relatedBoxPlot.min) * scale;
-                                const q1X = offset + (relatedBoxPlot.q1 - relatedBoxPlot.min) * scale;
-                                const medianX = offset + (relatedBoxPlot.median - relatedBoxPlot.min) * scale;
-                                const q3X = offset + (relatedBoxPlot.q3 - relatedBoxPlot.min) * scale;
-                                const maxX = offset + (relatedBoxPlot.max - relatedBoxPlot.min) * scale;
-                                
-                                return (
-                                  <g>
-                                    {/* Whiskers */}
-                                    <line x1={minX} y1={boxY + boxHeight/2} x2={q1X} y2={boxY + boxHeight/2} stroke="#3b82f6" strokeWidth="2" />
-                                    <line x1={q3X} y1={boxY + boxHeight/2} x2={maxX} y2={boxY + boxHeight/2} stroke="#3b82f6" strokeWidth="2" />
-                                    <line x1={minX} y1={boxY + 5} x2={minX} y2={boxY + boxHeight - 5} stroke="#3b82f6" strokeWidth="2" />
-                                    <line x1={maxX} y1={boxY + 5} x2={maxX} y2={boxY + boxHeight - 5} stroke="#3b82f6" strokeWidth="2" />
-                                    
-                                    {/* Box */}
-                                    <rect x={q1X} y={boxY} width={q3X - q1X} height={boxHeight} fill="#3b82f6" fillOpacity="0.3" stroke="#3b82f6" strokeWidth="2" />
-                                    
-                                    {/* Median line */}
-                                    <line x1={medianX} y1={boxY} x2={medianX} y2={boxY + boxHeight} stroke="#1d4ed8" strokeWidth="3" />
-                                  </g>
-                                );
-                              })()}
+                  {/* Unrelated Box Plots */}
+                  <div>
+                    <h5 className="text-sm font-medium text-red-600 mb-3">Unrelated Distances</h5>
+                    <div className="space-y-3">
+                      {activeModels.map(model => {
+                        const data = modelData[model].unrelated;
+                        const boxPlot = calculateBoxPlotStats(data);
+                        
+                        if (!boxPlot) {
+                          return (
+                            <div key={model} className="flex items-center space-x-4">
+                              <div className="w-32 text-sm font-medium">{model}</div>
+                              <div className="text-sm text-slate-400">No unrelated data</div>
+                            </div>
+                          );
+                        }
+
+                        const scale = 300 / (boxPlot.max - boxPlot.min || 1);
+                        const offset = 25;
+                        
+                        return (
+                          <div key={model} className="flex items-center space-x-4">
+                            <div className="w-32 text-sm font-medium">{model}</div>
+                            <svg width="350" height="40" className="border rounded">
+                              <g>
+                                {/* Box plot elements */}
+                                <line x1={offset} y1={20} x2={offset + 300} y2={20} stroke="#ef4444" strokeWidth="1" />
+                                <rect 
+                                  x={offset + (boxPlot.q1 - boxPlot.min) * scale} 
+                                  y={10} 
+                                  width={(boxPlot.q3 - boxPlot.q1) * scale} 
+                                  height={20} 
+                                  fill="#ef4444" 
+                                  fillOpacity="0.3" 
+                                  stroke="#ef4444" 
+                                  strokeWidth="2" 
+                                />
+                                <line 
+                                  x1={offset + (boxPlot.median - boxPlot.min) * scale} 
+                                  y1={10} 
+                                  x2={offset + (boxPlot.median - boxPlot.min) * scale} 
+                                  y2={30} 
+                                  stroke="#dc2626" 
+                                  strokeWidth="3" 
+                                />
+                              </g>
                             </svg>
-                            <div className="text-xs text-slate-600 mt-1">
-                              Min: {relatedBoxPlot.min.toFixed(3)} | Q1: {relatedBoxPlot.q1.toFixed(3)} | Median: {relatedBoxPlot.median.toFixed(3)} | Q3: {relatedBoxPlot.q3.toFixed(3)} | Max: {relatedBoxPlot.max.toFixed(3)}
+                            <div className="text-xs text-slate-600">
+                              {boxPlot.min.toFixed(3)} - {boxPlot.max.toFixed(3)} (n={boxPlot.count})
                             </div>
                           </div>
-                        </div>
-                      )}
-                      
-                      {/* Unrelated Box Plot */}
-                      {unrelatedBoxPlot && (
-                        <div>
-                          <h4 className="text-sm font-medium text-red-600 mb-2">Unrelated Distances</h4>
-                          <div className="relative">
-                            <svg width="400" height="80" className="border rounded">
-                              {(() => {
-                                const scale = 350 / (unrelatedBoxPlot.max - unrelatedBoxPlot.min);
-                                const offset = 25;
-                                const boxY = 25;
-                                const boxHeight = 30;
-                                
-                                const minX = offset + (unrelatedBoxPlot.min - unrelatedBoxPlot.min) * scale;
-                                const q1X = offset + (unrelatedBoxPlot.q1 - unrelatedBoxPlot.min) * scale;
-                                const medianX = offset + (unrelatedBoxPlot.median - unrelatedBoxPlot.min) * scale;
-                                const q3X = offset + (unrelatedBoxPlot.q3 - unrelatedBoxPlot.min) * scale;
-                                const maxX = offset + (unrelatedBoxPlot.max - unrelatedBoxPlot.min) * scale;
-                                
-                                return (
-                                  <g>
-                                    {/* Whiskers */}
-                                    <line x1={minX} y1={boxY + boxHeight/2} x2={q1X} y2={boxY + boxHeight/2} stroke="#ef4444" strokeWidth="2" />
-                                    <line x1={q3X} y1={boxY + boxHeight/2} x2={maxX} y2={boxY + boxHeight/2} stroke="#ef4444" strokeWidth="2" />
-                                    <line x1={minX} y1={boxY + 5} x2={minX} y2={boxY + boxHeight - 5} stroke="#ef4444" strokeWidth="2" />
-                                    <line x1={maxX} y1={boxY + 5} x2={maxX} y2={boxY + boxHeight - 5} stroke="#ef4444" strokeWidth="2" />
-                                    
-                                    {/* Box */}
-                                    <rect x={q1X} y={boxY} width={q3X - q1X} height={boxHeight} fill="#ef4444" fillOpacity="0.3" stroke="#ef4444" strokeWidth="2" />
-                                    
-                                    {/* Median line */}
-                                    <line x1={medianX} y1={boxY} x2={medianX} y2={boxY + boxHeight} stroke="#dc2626" strokeWidth="3" />
-                                  </g>
-                                );
-                              })()}
-                            </svg>
-                            <div className="text-xs text-slate-600 mt-1">
-                              Min: {unrelatedBoxPlot.min.toFixed(3)} | Q1: {unrelatedBoxPlot.q1.toFixed(3)} | Median: {unrelatedBoxPlot.median.toFixed(3)} | Q3: {unrelatedBoxPlot.q3.toFixed(3)} | Max: {unrelatedBoxPlot.max.toFixed(3)}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
