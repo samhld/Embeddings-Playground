@@ -146,6 +146,40 @@ export default function TextComparisonTable() {
     return chunks;
   };
 
+  const generateDistanceForPair = async (queryIndex: number, storedIndex: number, model: string) => {
+    const queryText = queryTexts[queryIndex]?.trim();
+    const storedText = storedTexts[storedIndex]?.trim();
+    
+    if (!queryText || !storedText || !model) return;
+
+    const key = `${queryIndex}-${storedIndex}-${model}`;
+    
+    // Set loading state
+    setLoading(prev => ({ ...prev, [key]: true }));
+
+    try {
+      // Generate embeddings
+      const queryResult = await generateEmbeddingMutation.mutateAsync({ text: queryText, model });
+      const storedResult = await generateEmbeddingMutation.mutateAsync({ text: storedText, model });
+
+      // Calculate distance
+      const distanceResult = await calculateDistanceMutation.mutateAsync({
+        embeddingA: queryResult.embedding,
+        embeddingB: storedResult.embedding,
+      });
+
+      setDistances(prev => ({ ...prev, [key]: distanceResult.distance }));
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate distance",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   const generateComparisons = async () => {
     const activeModels = Object.values(selectedModels).filter(Boolean);
     if (activeModels.length === 0) {
@@ -157,63 +191,18 @@ export default function TextComparisonTable() {
       return;
     }
 
-    const validQueryTexts = queryTexts.filter(text => text.trim());
-    const validStoredTexts = storedTexts.filter(text => text.trim());
-    
-    if (validQueryTexts.length === 0 || validStoredTexts.length === 0) {
-      toast({
-        title: "Missing Text",
-        description: "Please enter both query and stored texts",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    const maxLength = Math.max(queryTexts.length, storedTexts.length);
     setIsGenerating(true);
-    setLoading({});
-    setDistances({});
 
     try {
-      for (const model of activeModels) {
-        // Generate embeddings for unique texts
-        const uniqueQueryTexts = Array.from(new Set(validQueryTexts));
-        const uniqueStoredTexts = Array.from(new Set(validStoredTexts));
+      // Generate distances for all valid pairs across all models
+      for (let i = 0; i < maxLength; i++) {
+        const queryText = queryTexts[i]?.trim();
+        const storedText = storedTexts[i]?.trim();
         
-        const queryEmbeddings = new Map<string, number[]>();
-        const storedEmbeddings = new Map<string, number[]>();
-
-        // Generate query embeddings
-        for (const text of uniqueQueryTexts) {
-          const result = await generateEmbeddingMutation.mutateAsync({ text, model });
-          queryEmbeddings.set(text, result.embedding);
-        }
-
-        // Generate stored embeddings
-        for (const text of uniqueStoredTexts) {
-          const result = await generateEmbeddingMutation.mutateAsync({ text, model });
-          storedEmbeddings.set(text, result.embedding);
-        }
-
-        // Calculate distances for each row (query[i] vs stored[i])
-        const maxLength = Math.max(queryTexts.length, storedTexts.length);
-        for (let i = 0; i < maxLength; i++) {
-          const queryText = queryTexts[i]?.trim();
-          const storedText = storedTexts[i]?.trim();
-          
-          if (queryText && storedText) {
-            const key = `${i}-${i}-${model}`;
-            
-            const queryEmbedding = queryEmbeddings.get(queryText);
-            const storedEmbedding = storedEmbeddings.get(storedText);
-
-            if (queryEmbedding && storedEmbedding) {
-              const distanceResult = await calculateDistanceMutation.mutateAsync({
-                embeddingA: queryEmbedding,
-                embeddingB: storedEmbedding,
-              });
-
-              setDistances(prev => ({ ...prev, [key]: distanceResult.distance }));
-            }
+        if (queryText && storedText) {
+          for (const model of activeModels) {
+            await generateDistanceForPair(i, i, model);
           }
         }
       }
