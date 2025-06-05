@@ -517,6 +517,79 @@ export default function TextComparisonTable() {
     }
   };
 
+  const plotData = () => {
+    const activeModels = Object.values(selectedModels).filter(Boolean);
+    
+    // Check if there's any distance data
+    const hasDistanceData = Object.keys(distances).some(key => distances[key] !== null && distances[key] !== undefined);
+    
+    if (!hasDistanceData) {
+      toast({
+        title: "No data to plot",
+        description: "Please generate some distance calculations first before plotting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Collect all distance values
+    const allDistances: number[] = [];
+    Object.keys(distances).forEach(key => {
+      const distance = distances[key];
+      if (distance !== null && distance !== undefined) {
+        allDistances.push(distance);
+      }
+    });
+
+    if (allDistances.length === 0) {
+      toast({
+        title: "No data to plot",
+        description: "No valid distance calculations found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Calculate bin count: minimum of row count/10 or 10
+    const rowCount = Math.max(queryTexts.length, storedTexts.length);
+    const binCount = Math.min(Math.max(Math.floor(rowCount / 10), 1), 10);
+
+    // Calculate histogram bins
+    const minDistance = Math.min(...allDistances);
+    const maxDistance = Math.max(...allDistances);
+    const binWidth = (maxDistance - minDistance) / binCount;
+    
+    const bins = Array(binCount).fill(0);
+    const binLabels = Array(binCount).fill(0).map((_, i) => {
+      const start = minDistance + i * binWidth;
+      const end = start + binWidth;
+      return `${start.toFixed(3)}-${end.toFixed(3)}`;
+    });
+
+    // Fill bins
+    allDistances.forEach(distance => {
+      let binIndex = Math.floor((distance - minDistance) / binWidth);
+      if (binIndex >= binCount) binIndex = binCount - 1; // Handle edge case for max value
+      bins[binIndex]++;
+    });
+
+    // Create a simple text-based histogram display
+    const maxCount = Math.max(...bins);
+    const histogramText = bins.map((count, i) => {
+      const barLength = Math.round((count / maxCount) * 40); // 40 character max bar
+      const bar = '█'.repeat(barLength);
+      return `${binLabels[i].padEnd(15)} │${bar} ${count}`;
+    }).join('\n');
+
+    // Show histogram in a dialog/alert
+    alert(`Distance Distribution Histogram (${binCount} bins):\n\n${histogramText}\n\nTotal samples: ${allDistances.length}`);
+
+    toast({
+      title: "Histogram generated",
+      description: `Plotted ${allDistances.length} distance values in ${binCount} bins`,
+    });
+  };
+
   const maxRows = Math.max(queryTexts.length, storedTexts.length);
 
   return (
@@ -743,8 +816,8 @@ export default function TextComparisonTable() {
           </tfoot>
         </table>
         
-        {/* Add Row Button */}
-        <div className="p-4 border-t border-slate-200">
+        {/* Add Row and Plot Data Buttons */}
+        <div className="p-4 border-t border-slate-200 flex justify-between items-center">
           <Button
             variant="outline"
             size="sm"
@@ -756,6 +829,14 @@ export default function TextComparisonTable() {
           >
             <Plus className="h-4 w-4" />
             Add Row
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={plotData}
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-800"
+          >
+            📊 Plot Data
           </Button>
         </div>
       </div>
