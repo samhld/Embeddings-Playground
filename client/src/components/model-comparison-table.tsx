@@ -10,15 +10,21 @@ import type { GenerateEmbeddingResponse } from "@shared/schema";
 interface ModelRow {
   id: string;
   model: string;
-  embedding: number[] | null;
-  loading: boolean;
-  tokenCount: number;
-  processingTime: number;
-  dimensions: number;
+  embedding1: number[] | null;
+  embedding2: number[] | null;
+  loading1: boolean;
+  loading2: boolean;
+  tokenCount1: number;
+  tokenCount2: number;
+  processingTime1: number;
+  processingTime2: number;
+  dimensions1: number;
+  dimensions2: number;
 }
 
 interface ModelComparisonTableProps {
-  inputText: string;
+  inputText1: string;
+  inputText2: string;
 }
 
 const MODELS = [
@@ -27,35 +33,38 @@ const MODELS = [
   { value: "text-embedding-ada-002", label: "text-embedding-ada-002 (1536 dim, $0.10/1M tokens)" },
 ];
 
-export default function ModelComparisonTable({ inputText }: ModelComparisonTableProps) {
+export default function ModelComparisonTable({ inputText1, inputText2 }: ModelComparisonTableProps) {
   const [rows, setRows] = useState<ModelRow[]>([
-    { id: "1", model: "", embedding: null, loading: false, tokenCount: 0, processingTime: 0, dimensions: 0 },
-    { id: "2", model: "", embedding: null, loading: false, tokenCount: 0, processingTime: 0, dimensions: 0 },
-    { id: "3", model: "", embedding: null, loading: false, tokenCount: 0, processingTime: 0, dimensions: 0 },
+    { id: "1", model: "", embedding1: null, embedding2: null, loading1: false, loading2: false, tokenCount1: 0, tokenCount2: 0, processingTime1: 0, processingTime2: 0, dimensions1: 0, dimensions2: 0 },
+    { id: "2", model: "", embedding1: null, embedding2: null, loading1: false, loading2: false, tokenCount1: 0, tokenCount2: 0, processingTime1: 0, processingTime2: 0, dimensions1: 0, dimensions2: 0 },
+    { id: "3", model: "", embedding1: null, embedding2: null, loading1: false, loading2: false, tokenCount1: 0, tokenCount2: 0, processingTime1: 0, processingTime2: 0, dimensions1: 0, dimensions2: 0 },
   ]);
   const [copiedStates, setCopiedStates] = useState<{ [key: string]: boolean }>({});
   const { toast } = useToast();
 
   const generateEmbeddingMutation = useMutation({
-    mutationFn: async ({ text, model }: { text: string; model: string }) => {
+    mutationFn: async ({ text, model, inputNumber }: { text: string; model: string; inputNumber: 1 | 2 }) => {
       const response = await apiRequest("POST", "/api/embeddings/generate", { text, model });
       return response.json() as Promise<GenerateEmbeddingResponse>;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data, variables: any) => {
       setRows(prev => prev.map(row => 
         row.id === variables.rowId ? {
           ...row,
-          embedding: data.embedding,
-          loading: false,
-          tokenCount: data.tokenCount,
-          processingTime: data.processingTime,
-          dimensions: data.dimensions,
+          [`embedding${variables.inputNumber}`]: data.embedding,
+          [`loading${variables.inputNumber}`]: false,
+          [`tokenCount${variables.inputNumber}`]: data.tokenCount,
+          [`processingTime${variables.inputNumber}`]: data.processingTime,
+          [`dimensions${variables.inputNumber}`]: data.dimensions,
         } : row
       ));
     },
-    onError: (error: any, variables) => {
+    onError: (error: any, variables: any) => {
       setRows(prev => prev.map(row => 
-        row.id === variables.rowId ? { ...row, loading: false } : row
+        row.id === variables.rowId ? { 
+          ...row, 
+          [`loading${variables.inputNumber}`]: false 
+        } : row
       ));
       toast({
         title: "Error",
@@ -67,32 +76,49 @@ export default function ModelComparisonTable({ inputText }: ModelComparisonTable
 
   const handleModelChange = (rowId: string, model: string) => {
     setRows(prev => prev.map(row => 
-      row.id === rowId ? { ...row, model, embedding: null } : row
+      row.id === rowId ? { ...row, model, embedding1: null, embedding2: null } : row
     ));
 
-    if (model && inputText.trim()) {
-      setRows(prev => prev.map(row => 
-        row.id === rowId ? { ...row, loading: true } : row
-      ));
-      
-      generateEmbeddingMutation.mutate({ 
-        text: inputText, 
-        model, 
-        rowId 
-      } as any);
+    // Generate embeddings for both inputs if model is selected
+    if (model) {
+      if (inputText1.trim()) {
+        setRows(prev => prev.map(row => 
+          row.id === rowId ? { ...row, loading1: true } : row
+        ));
+        
+        generateEmbeddingMutation.mutate({ 
+          text: inputText1, 
+          model, 
+          inputNumber: 1,
+          rowId 
+        } as any);
+      }
+
+      if (inputText2.trim()) {
+        setRows(prev => prev.map(row => 
+          row.id === rowId ? { ...row, loading2: true } : row
+        ));
+        
+        generateEmbeddingMutation.mutate({ 
+          text: inputText2, 
+          model, 
+          inputNumber: 2,
+          rowId 
+        } as any);
+      }
     }
   };
 
-  const handleCopyEmbedding = async (rowId: string, embedding: number[]) => {
+  const handleCopyEmbedding = async (embeddingKey: string, embedding: number[]) => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(embedding));
-      setCopiedStates(prev => ({ ...prev, [rowId]: true }));
+      setCopiedStates(prev => ({ ...prev, [embeddingKey]: true }));
       toast({
         title: "Copied",
         description: "Embedding copied to clipboard",
       });
       setTimeout(() => {
-        setCopiedStates(prev => ({ ...prev, [rowId]: false }));
+        setCopiedStates(prev => ({ ...prev, [embeddingKey]: false }));
       }, 2000);
     } catch (error) {
       toast({
@@ -108,11 +134,16 @@ export default function ModelComparisonTable({ inputText }: ModelComparisonTable
     setRows(prev => [...prev, {
       id: newId,
       model: "",
-      embedding: null,
-      loading: false,
-      tokenCount: 0,
-      processingTime: 0,
-      dimensions: 0,
+      embedding1: null,
+      embedding2: null,
+      loading1: false,
+      loading2: false,
+      tokenCount1: 0,
+      tokenCount2: 0,
+      processingTime1: 0,
+      processingTime2: 0,
+      dimensions1: 0,
+      dimensions2: 0,
     }]);
   };
 

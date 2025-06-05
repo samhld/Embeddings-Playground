@@ -5,7 +5,8 @@ import ModelComparisonTable from "@/components/model-comparison-table";
 import DistanceCalculator from "@/components/distance-calculator";
 
 export default function EmbeddingsPlayground() {
-  const [inputText, setInputText] = useState("");
+  const [inputText1, setInputText1] = useState("");
+  const [inputText2, setInputText2] = useState("");
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -29,12 +30,14 @@ export default function EmbeddingsPlayground() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Input Section */}
         <InputSection 
-          inputText={inputText}
-          setInputText={setInputText}
+          inputText1={inputText1}
+          setInputText1={setInputText1}
+          inputText2={inputText2}
+          setInputText2={setInputText2}
         />
 
         {/* Model Comparison Table */}
-        <ModelComparisonTable inputText={inputText} />
+        <ModelComparisonTable inputText1={inputText1} inputText2={inputText2} />
 
         {/* Distance Calculator */}
         <DistanceCalculator />

@@ -5,34 +5,51 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { countTokens } from "@/lib/token-counter";
 
 interface InputSectionProps {
-  inputText: string;
-  setInputText: (text: string) => void;
+  inputText1: string;
+  setInputText1: (text: string) => void;
+  inputText2: string;
+  setInputText2: (text: string) => void;
 }
 
 export default function InputSection({ 
-  inputText, 
-  setInputText
+  inputText1, 
+  setInputText1,
+  inputText2,
+  setInputText2
 }: InputSectionProps) {
-  const [inputTokens, setInputTokens] = useState(0);
-  const [chunkCount, setChunkCount] = useState(0);
+  const [inputTokens1, setInputTokens1] = useState(0);
+  const [chunkCount1, setChunkCount1] = useState(0);
+  const [inputTokens2, setInputTokens2] = useState(0);
+  const [chunkCount2, setChunkCount2] = useState(0);
 
   useEffect(() => {
-    setInputTokens(countTokens(inputText));
-    // Count chunks if input contains line breaks
-    const chunks = inputText.split('\n').filter(chunk => chunk.trim().length > 0);
-    setChunkCount(chunks.length);
-  }, [inputText]);
+    setInputTokens1(countTokens(inputText1));
+    const chunks1 = inputText1.split('\n').filter(chunk => chunk.trim().length > 0);
+    setChunkCount1(chunks1.length);
+  }, [inputText1]);
 
-  const isMultipleChunks = chunkCount > 1;
-  const hasTokenLimit = inputTokens > 500;
-  const hasChunkLimit = chunkCount > 100;
+  useEffect(() => {
+    setInputTokens2(countTokens(inputText2));
+    const chunks2 = inputText2.split('\n').filter(chunk => chunk.trim().length > 0);
+    setChunkCount2(chunks2.length);
+  }, [inputText2]);
 
-  return (
-    <div className="mb-8">
+  const renderInputBox = (
+    title: string,
+    inputText: string,
+    setInputText: (text: string) => void,
+    inputTokens: number,
+    chunkCount: number
+  ) => {
+    const isMultipleChunks = chunkCount > 1;
+    const hasTokenLimit = inputTokens > 500;
+    const hasChunkLimit = chunkCount > 100;
+
+    return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-semibold text-slate-800">Input Text</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="text-slate-400 cursor-help" size={16} />
@@ -82,6 +99,13 @@ export default function InputSection({
           </div>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-8 mb-8">
+      {renderInputBox("Input Text 1", inputText1, setInputText1, inputTokens1, chunkCount1)}
+      {renderInputBox("Input Text 2", inputText2, setInputText2, inputTokens2, chunkCount2)}
     </div>
   );
 }
