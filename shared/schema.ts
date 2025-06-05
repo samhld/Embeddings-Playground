@@ -20,7 +20,7 @@ export type Embedding = typeof embeddings.$inferSelect;
 // Request/Response schemas
 export const generateEmbeddingSchema = z.object({
   text: z.string().min(1).max(10000),
-  model: z.enum(["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002", "Alibaba-NLP/gte-Qwen2-7B-instruct"]),
+  model: z.enum(["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002", "BAAI/bge-small-en-v1.5"]),
 });
 
 export const calculateDistanceSchema = z.object({

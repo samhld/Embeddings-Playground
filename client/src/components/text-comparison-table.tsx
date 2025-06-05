@@ -22,7 +22,7 @@ const MODELS = [
   { value: "text-embedding-3-small", label: "text-embedding-3-small" },
   { value: "text-embedding-3-large", label: "text-embedding-3-large" },
   { value: "text-embedding-ada-002", label: "text-embedding-ada-002" },
-  { value: "Alibaba-NLP/gte-Qwen2-7B-instruct", label: "Alibaba-NLP/gte-Qwen2-7B-instruct" },
+  { value: "BAAI/bge-small-en-v1.5", label: "BAAI/bge-small-en-v1.5" },
 ];
 
 export default function TextComparisonTable() {

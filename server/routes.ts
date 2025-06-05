@@ -61,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let embedding: number[];
       
       // Handle different model providers
-      if (model === "Alibaba-NLP/gte-Qwen2-7B-instruct") {
+      if (model === "BAAI/bge-small-en-v1.5") {
         // Use Hugging Face API for this model
         const hfResponse = await fetch(
           `https://api-inference.huggingface.co/models/${model}`,
