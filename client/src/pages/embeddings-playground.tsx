@@ -3,6 +3,7 @@ import { Code } from "lucide-react";
 import InputSection from "@/components/input-section";
 import ModelComparisonTable from "@/components/model-comparison-table";
 import DistanceCalculator from "@/components/distance-calculator";
+import TextComparisonTable from "@/components/text-comparison-table";
 
 export default function EmbeddingsPlayground() {
   const [inputText1, setInputText1] = useState("");
@@ -38,6 +39,9 @@ export default function EmbeddingsPlayground() {
 
         {/* Model Comparison Table */}
         <ModelComparisonTable inputText1={inputText1} inputText2={inputText2} />
+
+        {/* Text Comparison Table */}
+        <TextComparisonTable />
 
         {/* Distance Calculator */}
         <DistanceCalculator />
