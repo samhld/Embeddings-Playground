@@ -527,7 +527,7 @@ export default function TextComparisonTable() {
                 </div>
               </th>
               {["model1", "model2", "model3", "model4"].map((modelKey, index) => (
-                <th key={modelKey} className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/9">
+                <th key={modelKey} className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/6">
                   <Select 
                     value={selectedModels[modelKey]} 
                     onValueChange={(value) => handleModelChange(modelKey, value)}
@@ -656,7 +656,7 @@ export default function TextComparisonTable() {
               </td>
               <td className="px-2 py-1 border-r border-slate-200"></td>
               <td className="px-2 py-1 border-r border-slate-200"></td>
-              {["model1", "model2", "model3"].map((modelKey) => {
+              {["model1", "model2", "model3", "model4"].map((modelKey) => {
                 const model = selectedModels[modelKey];
                 const threshold = optimalThresholds[model] || null;
                 

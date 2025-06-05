@@ -58,20 +58,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate embedding using OpenAI
-      const embeddingParams: any = {
-        model,
-        input: text,
-      };
+      let embedding: number[];
       
-      // Configure dimensions for text-embedding-3-large to use half (1536 instead of 3072)
-      if (model === "text-embedding-3-large") {
-        embeddingParams.dimensions = 1536;
-      }
-      
-      const response = await openai.embeddings.create(embeddingParams);
+      // Handle different model providers
+      if (model === "Alibaba-NLP/gte-Qwen2-7B-instruct") {
+        // Use Hugging Face API for this model
+        const hfResponse = await fetch(
+          `https://api-inference.huggingface.co/models/${model}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              inputs: text,
+              options: { wait_for_model: true }
+            }),
+          }
+        );
 
-      const embedding = response.data[0].embedding;
+        if (!hfResponse.ok) {
+          throw new Error(`Hugging Face API error: ${hfResponse.statusText}`);
+        }
+
+        const hfData = await hfResponse.json();
+        
+        // Handle different response formats from Hugging Face
+        if (Array.isArray(hfData) && hfData.length > 0) {
+          embedding = hfData[0];
+        } else if (hfData.embeddings) {
+          embedding = hfData.embeddings[0];
+        } else if (Array.isArray(hfData)) {
+          embedding = hfData;
+        } else {
+          throw new Error('Unexpected response format from Hugging Face API');
+        }
+      } else {
+        // Generate embedding using OpenAI
+        const embeddingParams: any = {
+          model,
+          input: text,
+        };
+        
+        // Configure dimensions for text-embedding-3-large to use half (1536 instead of 3072)
+        if (model === "text-embedding-3-large") {
+          embeddingParams.dimensions = 1536;
+        }
+        
+        const response = await openai.embeddings.create(embeddingParams);
+        embedding = response.data[0].embedding;
+      }
       const processingTime = Date.now() - startTime;
 
       // Save to storage
