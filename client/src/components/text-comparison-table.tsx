@@ -927,206 +927,175 @@ export default function TextComparisonTable() {
               <div className="bg-white p-6 rounded-lg border">
                 <h4 className="text-md font-medium mb-6">Box Plots - Statistical Summary</h4>
                 
-                {/* Related Box Plots */}
-                <div className="mb-8">
-                  <h5 className="text-sm font-medium text-blue-600 mb-4">Related Distances</h5>
-                  <div className="space-y-6">
-                    {activeModels.map(model => {
-                      const data = modelData[model].related;
-                      const boxPlot = calculateBoxPlotStats(data);
-                      
-                      if (!boxPlot) {
-                        return (
-                          <div key={model} className="flex items-center space-x-4">
-                            <div className="w-40 text-sm font-medium">{model}</div>
-                            <div className="text-sm text-slate-400">No related data</div>
-                          </div>
-                        );
-                      }
-
-                      const chartWidth = 500;
-                      const chartHeight = 80;
-                      const margin = { left: 50, right: 50, top: 10, bottom: 30 };
-                      const plotWidth = chartWidth - margin.left - margin.right;
-                      const range = boxPlot.max - boxPlot.min || 1;
-                      const scale = plotWidth / range;
-                      
-                      // Calculate positions
-                      const minX = margin.left;
-                      const q1X = margin.left + (boxPlot.q1 - boxPlot.min) * scale;
-                      const medianX = margin.left + (boxPlot.median - boxPlot.min) * scale;
-                      const q3X = margin.left + (boxPlot.q3 - boxPlot.min) * scale;
-                      const maxX = margin.left + (boxPlot.max - boxPlot.min) * scale;
-                      
-                      // Create tick marks
-                      const tickValues = [boxPlot.min, boxPlot.q1, boxPlot.median, boxPlot.q3, boxPlot.max];
-                      
-                      return (
-                        <div key={model} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium w-40">{model}</div>
-                            <div className="text-xs text-slate-600 grid grid-cols-5 gap-4 text-center">
-                              <span>Min: {boxPlot.min.toFixed(3)}</span>
-                              <span>Q1: {boxPlot.q1.toFixed(3)}</span>
-                              <span>Median: {boxPlot.median.toFixed(3)}</span>
-                              <span>Q3: {boxPlot.q3.toFixed(3)}</span>
-                              <span>Max: {boxPlot.max.toFixed(3)}</span>
+                <div className="space-y-8">
+                  {activeModels.map(model => {
+                    const relatedData = modelData[model].related;
+                    const unrelatedData = modelData[model].unrelated;
+                    const relatedBoxPlot = calculateBoxPlotStats(relatedData);
+                    const unrelatedBoxPlot = calculateBoxPlotStats(unrelatedData);
+                    
+                    // Calculate combined range for consistent scaling
+                    const allValues = [...relatedData, ...unrelatedData];
+                    const minValue = Math.min(...allValues);
+                    const maxValue = Math.max(...allValues);
+                    const range = maxValue - minValue || 1;
+                    
+                    const chartWidth = 600;
+                    const chartHeight = 140;
+                    const margin = { left: 60, right: 60, top: 15, bottom: 40 };
+                    const plotWidth = chartWidth - margin.left - margin.right;
+                    const scale = plotWidth / range;
+                    
+                    return (
+                      <div key={model} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-medium">{model}</h5>
+                          <div className="flex items-center space-x-6">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                              <span className="text-xs">Related (n={relatedData.length})</span>
                             </div>
-                            <div className="text-xs text-slate-500">n={boxPlot.count}</div>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-red-500 rounded"></div>
+                              <span className="text-xs">Unrelated (n={unrelatedData.length})</span>
+                            </div>
                           </div>
-                          
-                          <svg width={chartWidth} height={chartHeight} className="border rounded bg-slate-50">
-                            <g>
-                              {/* Whiskers */}
-                              <line x1={minX} y1={40} x2={q1X} y2={40} stroke="#3b82f6" strokeWidth="2" />
-                              <line x1={q3X} y1={40} x2={maxX} y2={40} stroke="#3b82f6" strokeWidth="2" />
-                              <line x1={minX} y1={30} x2={minX} y2={50} stroke="#3b82f6" strokeWidth="2" />
-                              <line x1={maxX} y1={30} x2={maxX} y2={50} stroke="#3b82f6" strokeWidth="2" />
+                        </div>
+                        
+                        <svg width={chartWidth} height={chartHeight} className="border rounded bg-slate-50">
+                          <g>
+                            {/* Related Box Plot (Top) */}
+                            {relatedBoxPlot && (() => {
+                              const minX = margin.left + (relatedBoxPlot.min - minValue) * scale;
+                              const q1X = margin.left + (relatedBoxPlot.q1 - minValue) * scale;
+                              const medianX = margin.left + (relatedBoxPlot.median - minValue) * scale;
+                              const q3X = margin.left + (relatedBoxPlot.q3 - minValue) * scale;
+                              const maxX = margin.left + (relatedBoxPlot.max - minValue) * scale;
+                              const boxY = 25;
                               
-                              {/* Box */}
-                              <rect 
-                                x={q1X} 
-                                y={25} 
-                                width={q3X - q1X} 
-                                height={30} 
-                                fill="#3b82f6" 
-                                fillOpacity="0.3" 
-                                stroke="#3b82f6" 
-                                strokeWidth="2" 
-                              />
+                              return (
+                                <g>
+                                  {/* Related label */}
+                                  <text x={15} y={boxY + 15} className="text-xs font-medium" fill="#3b82f6">Related</text>
+                                  
+                                  {/* Whiskers */}
+                                  <line x1={minX} y1={boxY + 15} x2={q1X} y2={boxY + 15} stroke="#3b82f6" strokeWidth="2" />
+                                  <line x1={q3X} y1={boxY + 15} x2={maxX} y2={boxY + 15} stroke="#3b82f6" strokeWidth="2" />
+                                  <line x1={minX} y1={boxY + 8} x2={minX} y2={boxY + 22} stroke="#3b82f6" strokeWidth="2" />
+                                  <line x1={maxX} y1={boxY + 8} x2={maxX} y2={boxY + 22} stroke="#3b82f6" strokeWidth="2" />
+                                  
+                                  {/* Box */}
+                                  <rect 
+                                    x={q1X} 
+                                    y={boxY + 5} 
+                                    width={q3X - q1X} 
+                                    height={20} 
+                                    fill="#3b82f6" 
+                                    fillOpacity="0.3" 
+                                    stroke="#3b82f6" 
+                                    strokeWidth="2" 
+                                  />
+                                  
+                                  {/* Median line */}
+                                  <line 
+                                    x1={medianX} 
+                                    y1={boxY + 5} 
+                                    x2={medianX} 
+                                    y2={boxY + 25} 
+                                    stroke="#1d4ed8" 
+                                    strokeWidth="3" 
+                                  />
+                                </g>
+                              );
+                            })()}
+                            
+                            {/* Unrelated Box Plot (Bottom) */}
+                            {unrelatedBoxPlot && (() => {
+                              const minX = margin.left + (unrelatedBoxPlot.min - minValue) * scale;
+                              const q1X = margin.left + (unrelatedBoxPlot.q1 - minValue) * scale;
+                              const medianX = margin.left + (unrelatedBoxPlot.median - minValue) * scale;
+                              const q3X = margin.left + (unrelatedBoxPlot.q3 - minValue) * scale;
+                              const maxX = margin.left + (unrelatedBoxPlot.max - minValue) * scale;
+                              const boxY = 60;
                               
-                              {/* Median line */}
-                              <line 
-                                x1={medianX} 
-                                y1={25} 
-                                x2={medianX} 
-                                y2={55} 
-                                stroke="#1d4ed8" 
-                                strokeWidth="3" 
-                              />
+                              return (
+                                <g>
+                                  {/* Unrelated label */}
+                                  <text x={15} y={boxY + 15} className="text-xs font-medium" fill="#ef4444">Unrelated</text>
+                                  
+                                  {/* Whiskers */}
+                                  <line x1={minX} y1={boxY + 15} x2={q1X} y2={boxY + 15} stroke="#ef4444" strokeWidth="2" />
+                                  <line x1={q3X} y1={boxY + 15} x2={maxX} y2={boxY + 15} stroke="#ef4444" strokeWidth="2" />
+                                  <line x1={minX} y1={boxY + 8} x2={minX} y2={boxY + 22} stroke="#ef4444" strokeWidth="2" />
+                                  <line x1={maxX} y1={boxY + 8} x2={maxX} y2={boxY + 22} stroke="#ef4444" strokeWidth="2" />
+                                  
+                                  {/* Box */}
+                                  <rect 
+                                    x={q1X} 
+                                    y={boxY + 5} 
+                                    width={q3X - q1X} 
+                                    height={20} 
+                                    fill="#ef4444" 
+                                    fillOpacity="0.3" 
+                                    stroke="#ef4444" 
+                                    strokeWidth="2" 
+                                  />
+                                  
+                                  {/* Median line */}
+                                  <line 
+                                    x1={medianX} 
+                                    y1={boxY + 5} 
+                                    x2={medianX} 
+                                    y2={boxY + 25} 
+                                    stroke="#dc2626" 
+                                    strokeWidth="3" 
+                                  />
+                                </g>
+                              );
+                            })()}
+                            
+                            {/* Shared X-axis ticks and labels */}
+                            {(() => {
+                              const tickCount = 6;
+                              const tickStep = range / (tickCount - 1);
+                              const tickValues = Array.from({ length: tickCount }, (_, i) => minValue + i * tickStep);
                               
-                              {/* X-axis ticks and labels */}
-                              {tickValues.map((value, i) => {
-                                const x = margin.left + (value - boxPlot.min) * scale;
+                              return tickValues.map((value, i) => {
+                                const x = margin.left + (value - minValue) * scale;
                                 return (
                                   <g key={i}>
-                                    <line x1={x} y1={60} x2={x} y2={65} stroke="#64748b" strokeWidth="1" />
-                                    <text x={x} y={75} textAnchor="middle" className="text-xs" fill="#64748b">
+                                    <line x1={x} y1={95} x2={x} y2={105} stroke="#64748b" strokeWidth="1" />
+                                    <text x={x} y={120} textAnchor="middle" className="text-xs" fill="#64748b">
                                       {value.toFixed(2)}
                                     </text>
                                   </g>
                                 );
-                              })}
-                              
-                              {/* X-axis line */}
-                              <line x1={margin.left} y1={60} x2={margin.left + plotWidth} y2={60} stroke="#64748b" strokeWidth="1" />
-                            </g>
-                          </svg>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Unrelated Box Plots */}
-                <div>
-                  <h5 className="text-sm font-medium text-red-600 mb-4">Unrelated Distances</h5>
-                  <div className="space-y-6">
-                    {activeModels.map(model => {
-                      const data = modelData[model].unrelated;
-                      const boxPlot = calculateBoxPlotStats(data);
-                      
-                      if (!boxPlot) {
-                        return (
-                          <div key={model} className="flex items-center space-x-4">
-                            <div className="w-40 text-sm font-medium">{model}</div>
-                            <div className="text-sm text-slate-400">No unrelated data</div>
-                          </div>
-                        );
-                      }
-
-                      const chartWidth = 500;
-                      const chartHeight = 80;
-                      const margin = { left: 50, right: 50, top: 10, bottom: 30 };
-                      const plotWidth = chartWidth - margin.left - margin.right;
-                      const range = boxPlot.max - boxPlot.min || 1;
-                      const scale = plotWidth / range;
-                      
-                      // Calculate positions
-                      const minX = margin.left;
-                      const q1X = margin.left + (boxPlot.q1 - boxPlot.min) * scale;
-                      const medianX = margin.left + (boxPlot.median - boxPlot.min) * scale;
-                      const q3X = margin.left + (boxPlot.q3 - boxPlot.min) * scale;
-                      const maxX = margin.left + (boxPlot.max - boxPlot.min) * scale;
-                      
-                      // Create tick marks
-                      const tickValues = [boxPlot.min, boxPlot.q1, boxPlot.median, boxPlot.q3, boxPlot.max];
-                      
-                      return (
-                        <div key={model} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium w-40">{model}</div>
-                            <div className="text-xs text-slate-600 grid grid-cols-5 gap-4 text-center">
-                              <span>Min: {boxPlot.min.toFixed(3)}</span>
-                              <span>Q1: {boxPlot.q1.toFixed(3)}</span>
-                              <span>Median: {boxPlot.median.toFixed(3)}</span>
-                              <span>Q3: {boxPlot.q3.toFixed(3)}</span>
-                              <span>Max: {boxPlot.max.toFixed(3)}</span>
+                              });
+                            })()}
+                            
+                            {/* X-axis line */}
+                            <line x1={margin.left} y1={95} x2={margin.left + plotWidth} y2={95} stroke="#64748b" strokeWidth="1" />
+                          </g>
+                        </svg>
+                        
+                        {/* Statistical summaries */}
+                        <div className="grid grid-cols-2 gap-4 text-xs text-slate-600">
+                          {relatedBoxPlot && (
+                            <div className="space-y-1">
+                              <div className="font-medium text-blue-600">Related Statistics:</div>
+                              <div>Min: {relatedBoxPlot.min.toFixed(3)} | Q1: {relatedBoxPlot.q1.toFixed(3)} | Median: {relatedBoxPlot.median.toFixed(3)} | Q3: {relatedBoxPlot.q3.toFixed(3)} | Max: {relatedBoxPlot.max.toFixed(3)}</div>
                             </div>
-                            <div className="text-xs text-slate-500">n={boxPlot.count}</div>
-                          </div>
-                          
-                          <svg width={chartWidth} height={chartHeight} className="border rounded bg-slate-50">
-                            <g>
-                              {/* Whiskers */}
-                              <line x1={minX} y1={40} x2={q1X} y2={40} stroke="#ef4444" strokeWidth="2" />
-                              <line x1={q3X} y1={40} x2={maxX} y2={40} stroke="#ef4444" strokeWidth="2" />
-                              <line x1={minX} y1={30} x2={minX} y2={50} stroke="#ef4444" strokeWidth="2" />
-                              <line x1={maxX} y1={30} x2={maxX} y2={50} stroke="#ef4444" strokeWidth="2" />
-                              
-                              {/* Box */}
-                              <rect 
-                                x={q1X} 
-                                y={25} 
-                                width={q3X - q1X} 
-                                height={30} 
-                                fill="#ef4444" 
-                                fillOpacity="0.3" 
-                                stroke="#ef4444" 
-                                strokeWidth="2" 
-                              />
-                              
-                              {/* Median line */}
-                              <line 
-                                x1={medianX} 
-                                y1={25} 
-                                x2={medianX} 
-                                y2={55} 
-                                stroke="#dc2626" 
-                                strokeWidth="3" 
-                              />
-                              
-                              {/* X-axis ticks and labels */}
-                              {tickValues.map((value, i) => {
-                                const x = margin.left + (value - boxPlot.min) * scale;
-                                return (
-                                  <g key={i}>
-                                    <line x1={x} y1={60} x2={x} y2={65} stroke="#64748b" strokeWidth="1" />
-                                    <text x={x} y={75} textAnchor="middle" className="text-xs" fill="#64748b">
-                                      {value.toFixed(2)}
-                                    </text>
-                                  </g>
-                                );
-                              })}
-                              
-                              {/* X-axis line */}
-                              <line x1={margin.left} y1={60} x2={margin.left + plotWidth} y2={60} stroke="#64748b" strokeWidth="1" />
-                            </g>
-                          </svg>
+                          )}
+                          {unrelatedBoxPlot && (
+                            <div className="space-y-1">
+                              <div className="font-medium text-red-600">Unrelated Statistics:</div>
+                              <div>Min: {unrelatedBoxPlot.min.toFixed(3)} | Q1: {unrelatedBoxPlot.q1.toFixed(3)} | Median: {unrelatedBoxPlot.median.toFixed(3)} | Q3: {unrelatedBoxPlot.q3.toFixed(3)} | Max: {unrelatedBoxPlot.max.toFixed(3)}</div>
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
