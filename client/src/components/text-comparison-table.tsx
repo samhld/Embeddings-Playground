@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Play, Upload, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,18 @@ const MODELS = [
 ];
 
 export default function TextComparisonTable() {
-  const [rows, setRows] = useState<TextRow[]>([
-    { id: "1", queryText: "", storedText: "", distances: {}, loading: {} }
-  ]);
+  const [queryTexts, setQueryTexts] = useState<string[]>([""]);
+  const [storedTexts, setStoredTexts] = useState<string[]>([""]);
   const [selectedModels, setSelectedModels] = useState<{ [key: string]: string }>({
     "model1": "",
     "model2": "",
     "model3": ""
   });
+  const [distances, setDistances] = useState<{ [key: string]: number | null }>({});
+  const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const queryFileRef = useRef<HTMLInputElement>(null);
+  const storedFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const generateEmbeddingMutation = useMutation({
@@ -52,31 +55,95 @@ export default function TextComparisonTable() {
     },
   });
 
-  const addRow = () => {
-    const newId = (rows.length + 1).toString();
-    setRows(prev => [...prev, {
-      id: newId,
-      queryText: "",
-      storedText: "",
-      distances: {},
-      loading: {}
-    }]);
+  const addQueryText = () => {
+    setQueryTexts(prev => [...prev, ""]);
   };
 
-  const removeRow = (id: string) => {
-    if (rows.length > 1) {
-      setRows(prev => prev.filter(row => row.id !== id));
+  const addStoredText = () => {
+    setStoredTexts(prev => [...prev, ""]);
+  };
+
+  const removeQueryText = (index: number) => {
+    if (queryTexts.length > 1) {
+      setQueryTexts(prev => prev.filter((_, i) => i !== index));
     }
   };
 
-  const updateRowText = (id: string, field: 'queryText' | 'storedText', value: string) => {
-    setRows(prev => prev.map(row => 
-      row.id === id ? { ...row, [field]: value } : row
-    ));
+  const removeStoredText = (index: number) => {
+    if (storedTexts.length > 1) {
+      setStoredTexts(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateQueryText = (index: number, value: string) => {
+    setQueryTexts(prev => prev.map((text, i) => i === index ? value : text));
+  };
+
+  const updateStoredText = (index: number, value: string) => {
+    setStoredTexts(prev => prev.map((text, i) => i === index ? value : text));
   };
 
   const handleModelChange = (column: string, model: string) => {
     setSelectedModels(prev => ({ ...prev, [column]: model }));
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'query' | 'stored') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const chunks = parseTextChunks(text);
+      
+      if (chunks.length === 0) {
+        toast({
+          title: "No Text Found",
+          description: "The uploaded file doesn't contain any valid text chunks",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (type === 'query') {
+        setQueryTexts(chunks);
+      } else {
+        setStoredTexts(chunks);
+      }
+
+      toast({
+        title: "File Uploaded",
+        description: `Loaded ${chunks.length} text chunks`,
+      });
+
+    } catch (error) {
+      toast({
+        title: "Upload Error",
+        description: "Failed to read the file",
+        variant: "destructive",
+      });
+    }
+
+    // Clear the input
+    event.target.value = '';
+  };
+
+  const parseTextChunks = (text: string): string[] => {
+    // Handle CSV by splitting on commas first, then newlines
+    let chunks: string[] = [];
+    
+    if (text.includes(',') && text.includes('\n')) {
+      // Likely CSV format
+      const lines = text.split('\n');
+      for (const line of lines) {
+        const cells = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+        chunks.push(...cells.filter(cell => cell.length > 0));
+      }
+    } else {
+      // Text document, split by newlines
+      chunks = text.split('\n').map(chunk => chunk.trim()).filter(chunk => chunk.length > 0);
+    }
+    
+    return chunks;
   };
 
   const generateComparisons = async () => {
@@ -90,76 +157,70 @@ export default function TextComparisonTable() {
       return;
     }
 
-    const validRows = rows.filter(row => row.queryText.trim() && row.storedText.trim());
-    if (validRows.length === 0) {
+    const validQueryTexts = queryTexts.filter(text => text.trim());
+    const validStoredTexts = storedTexts.filter(text => text.trim());
+    
+    if (validQueryTexts.length === 0 || validStoredTexts.length === 0) {
       toast({
-        title: "No Valid Text Pairs",
-        description: "Please enter both query and stored text for at least one row",
+        title: "Missing Text",
+        description: "Please enter both query and stored texts",
         variant: "destructive",
       });
       return;
     }
 
     setIsGenerating(true);
+    setLoading({});
+    setDistances({});
 
     try {
-      // Set loading state for all active models
-      setRows(prev => prev.map(row => ({
-        ...row,
-        loading: activeModels.reduce((acc, model) => ({ ...acc, [model]: true }), {})
-      })));
-
       for (const model of activeModels) {
-        // Get unique texts to minimize API calls
-        const queryTextSet = new Set(validRows.map(row => row.queryText.trim()));
-        const storedTextSet = new Set(validRows.map(row => row.storedText.trim()));
-        const queryTexts: string[] = [];
-        const storedTexts: string[] = [];
+        // Generate embeddings for unique texts
+        const uniqueQueryTexts = Array.from(new Set(validQueryTexts));
+        const uniqueStoredTexts = Array.from(new Set(validStoredTexts));
         
-        queryTextSet.forEach(text => queryTexts.push(text));
-        storedTextSet.forEach(text => storedTexts.push(text));
-
-        // Generate embeddings for all unique texts
         const queryEmbeddings = new Map<string, number[]>();
         const storedEmbeddings = new Map<string, number[]>();
 
         // Generate query embeddings
-        for (const text of queryTexts) {
+        for (const text of uniqueQueryTexts) {
           const result = await generateEmbeddingMutation.mutateAsync({ text, model });
           queryEmbeddings.set(text, result.embedding);
         }
 
         // Generate stored embeddings
-        for (const text of storedTexts) {
+        for (const text of uniqueStoredTexts) {
           const result = await generateEmbeddingMutation.mutateAsync({ text, model });
           storedEmbeddings.set(text, result.embedding);
         }
 
-        // Calculate distances for each row
-        for (const row of validRows) {
-          const queryEmbedding = queryEmbeddings.get(row.queryText.trim());
-          const storedEmbedding = storedEmbeddings.get(row.storedText.trim());
+        // Calculate distances for each row (query[i] vs stored[i])
+        const maxLength = Math.max(queryTexts.length, storedTexts.length);
+        for (let i = 0; i < maxLength; i++) {
+          const queryText = queryTexts[i]?.trim();
+          const storedText = storedTexts[i]?.trim();
+          
+          if (queryText && storedText) {
+            const key = `${i}-${i}-${model}`;
+            
+            const queryEmbedding = queryEmbeddings.get(queryText);
+            const storedEmbedding = storedEmbeddings.get(storedText);
 
-          if (queryEmbedding && storedEmbedding) {
-            const distanceResult = await calculateDistanceMutation.mutateAsync({
-              embeddingA: queryEmbedding,
-              embeddingB: storedEmbedding,
-            });
+            if (queryEmbedding && storedEmbedding) {
+              const distanceResult = await calculateDistanceMutation.mutateAsync({
+                embeddingA: queryEmbedding,
+                embeddingB: storedEmbedding,
+              });
 
-            setRows(prev => prev.map(r => 
-              r.id === row.id ? {
-                ...r,
-                distances: { ...r.distances, [model]: distanceResult.distance },
-                loading: { ...r.loading, [model]: false }
-              } : r
-            ));
+              setDistances(prev => ({ ...prev, [key]: distanceResult.distance }));
+            }
           }
         }
       }
 
       toast({
         title: "Comparison Complete",
-        description: `Generated embeddings and calculated distances for ${activeModels.length} models across ${validRows.length} text pairs`,
+        description: `Generated distances for ${activeModels.length} models`,
       });
 
     } catch (error: any) {
@@ -173,37 +234,7 @@ export default function TextComparisonTable() {
     }
   };
 
-  const parseTextChunks = (text: string): string[] => {
-    return text.split('\n').filter(chunk => chunk.trim().length > 0);
-  };
-
-  const handleBulkUpload = (field: 'queryText' | 'storedText', text: string) => {
-    const chunks = parseTextChunks(text);
-    if (chunks.length === 0) return;
-
-    // If we have fewer rows than chunks, add more rows
-    const neededRows = Math.max(chunks.length, rows.length);
-    const newRows = [...rows];
-    
-    for (let i = rows.length; i < neededRows; i++) {
-      newRows.push({
-        id: (i + 1).toString(),
-        queryText: "",
-        storedText: "",
-        distances: {},
-        loading: {}
-      });
-    }
-
-    // Update the specified field for each row
-    for (let i = 0; i < chunks.length; i++) {
-      if (newRows[i]) {
-        newRows[i][field] = chunks[i];
-      }
-    }
-
-    setRows(newRows);
-  };
+  const maxRows = Math.max(queryTexts.length, storedTexts.length);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8">
@@ -231,47 +262,79 @@ export default function TextComparisonTable() {
               <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 border-r border-slate-200" colSpan={2}>
                 Text Comparison
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 border-r border-slate-200" colSpan={3}>
+              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700" colSpan={3}>
                 Model Comparison
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                Distance
-              </th>
-              <th className="px-4 py-3 w-16"></th>
             </tr>
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/4 border-r border-slate-200">
+              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
                 <div className="space-y-2">
-                  <span>Query Text</span>
-                  <Textarea
-                    placeholder="Paste multiple query texts (one per line) to bulk upload..."
-                    className="text-xs h-16 resize-none"
-                    onBlur={(e) => {
-                      if (e.target.value.trim()) {
-                        handleBulkUpload('queryText', e.target.value);
-                        e.target.value = '';
-                      }
-                    }}
+                  <div className="flex items-center justify-between">
+                    <span>Query Text</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => queryFileRef.current?.click()}
+                        className="text-xs h-6"
+                      >
+                        <Upload className="mr-1 h-3 w-3" />
+                        Upload
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={addQueryText}
+                        className="text-xs h-6"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <input
+                    ref={queryFileRef}
+                    type="file"
+                    accept=".txt,.csv"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'query')}
                   />
                 </div>
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/4 border-r border-slate-200">
+              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
                 <div className="space-y-2">
-                  <span>Stored Text</span>
-                  <Textarea
-                    placeholder="Paste multiple stored texts (one per line) to bulk upload..."
-                    className="text-xs h-16 resize-none"
-                    onBlur={(e) => {
-                      if (e.target.value.trim()) {
-                        handleBulkUpload('storedText', e.target.value);
-                        e.target.value = '';
-                      }
-                    }}
+                  <div className="flex items-center justify-between">
+                    <span>Stored Text</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => storedFileRef.current?.click()}
+                        className="text-xs h-6"
+                      >
+                        <Upload className="mr-1 h-3 w-3" />
+                        Upload
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={addStoredText}
+                        className="text-xs h-6"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <input
+                    ref={storedFileRef}
+                    type="file"
+                    accept=".txt,.csv"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'stored')}
                   />
                 </div>
               </th>
               {["model1", "model2", "model3"].map((modelKey, index) => (
-                <th key={modelKey} className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/6">
+                <th key={modelKey} className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/9">
                   <Select 
                     value={selectedModels[modelKey]} 
                     onValueChange={(value) => handleModelChange(modelKey, value)}
@@ -289,97 +352,101 @@ export default function TextComparisonTable() {
                   </Select>
                 </th>
               ))}
-              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">
-                Cosine Distance
-              </th>
-              <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {rows.map((row, index) => (
-              <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+            {Array.from({ length: maxRows }, (_, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 border-r border-slate-200">
-                  <Textarea
-                    value={row.queryText}
-                    onChange={(e) => updateRowText(row.id, 'queryText', e.target.value)}
-                    placeholder="Enter query text..."
-                    className="w-full h-20 text-sm resize-none"
-                  />
+                  {rowIndex < queryTexts.length ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={queryTexts[rowIndex]}
+                        onChange={(e) => updateQueryText(rowIndex, e.target.value)}
+                        placeholder="Enter query text..."
+                        className="w-full h-20 text-sm resize-none"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeQueryText(rowIndex)}
+                        className="text-xs text-slate-400 hover:text-red-500 h-6"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-20 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
+                  )}
                 </td>
                 <td className="px-4 py-3 border-r border-slate-200">
-                  <Textarea
-                    value={row.storedText}
-                    onChange={(e) => updateRowText(row.id, 'storedText', e.target.value)}
-                    placeholder="Enter stored text..."
-                    className="w-full h-20 text-sm resize-none"
-                  />
+                  {rowIndex < storedTexts.length ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={storedTexts[rowIndex]}
+                        onChange={(e) => updateStoredText(rowIndex, e.target.value)}
+                        placeholder="Enter stored text..."
+                        className="w-full h-20 text-sm resize-none"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeStoredText(rowIndex)}
+                        className="text-xs text-slate-400 hover:text-red-500 h-6"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-20 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
+                  )}
                 </td>
                 {["model1", "model2", "model3"].map((modelKey) => {
                   const model = selectedModels[modelKey];
-                  const distance = row.distances[model];
-                  const loading = row.loading[model];
+                  if (!model) {
+                    return (
+                      <td key={modelKey} className="px-4 py-3 text-center">
+                        <div className="text-xs text-slate-400">No model</div>
+                      </td>
+                    );
+                  }
+
+                  // Check if we have both texts for this row
+                  const hasQueryText = rowIndex < queryTexts.length && queryTexts[rowIndex].trim();
+                  const hasStoredText = rowIndex < storedTexts.length && storedTexts[rowIndex].trim();
+                  
+                  if (!hasQueryText || !hasStoredText) {
+                    return (
+                      <td key={modelKey} className="px-4 py-3 text-center">
+                        <div className="text-xs text-slate-400">-</div>
+                      </td>
+                    );
+                  }
+
+                  const distanceKey = `${rowIndex}-${rowIndex}-${model}`;
+                  const distance = distances[distanceKey];
+                  const isLoading = loading[distanceKey];
                   
                   return (
                     <td key={modelKey} className="px-4 py-3 text-center">
-                      {loading && (
+                      {isLoading && (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                         </div>
                       )}
-                      {!loading && distance !== null && distance !== undefined && (
-                        <div className="text-sm font-mono">
+                      {!isLoading && distance !== null && distance !== undefined && (
+                        <div className="text-sm font-mono bg-slate-100 rounded p-1">
                           {distance.toFixed(4)}
                         </div>
                       )}
-                      {!loading && !model && (
-                        <div className="text-xs text-slate-400">No model</div>
-                      )}
-                      {!loading && model && (distance === null || distance === undefined) && (
+                      {!isLoading && (distance === null || distance === undefined) && (
                         <div className="text-xs text-slate-400">-</div>
                       )}
                     </td>
                   );
                 })}
-                <td className="px-4 py-3">
-                  <div className="text-xs text-slate-500">
-                    {Object.values(selectedModels).filter(Boolean).map(model => {
-                      const distance = row.distances[model];
-                      if (distance !== null && distance !== undefined) {
-                        return (
-                          <div key={model} className="font-mono">
-                            {model.split('-')[2]}: {distance.toFixed(4)}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeRow(row.id)}
-                    disabled={rows.length === 1}
-                    className="text-slate-400 hover:text-red-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </td>
               </tr>
             ))}
-            <tr>
-              <td colSpan={7} className="px-4 py-3">
-                <Button
-                  variant="outline"
-                  onClick={addRow}
-                  className="w-full py-2 border-2 border-dashed border-slate-300 hover:border-primary hover:text-primary"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Text Comparison Row
-                </Button>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
