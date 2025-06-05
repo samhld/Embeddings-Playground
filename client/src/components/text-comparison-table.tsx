@@ -506,7 +506,6 @@ export default function TextComparisonTable() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-800">Text Comparison Table</h2>
-            <p className="text-sm text-slate-600 mt-1">Compare query texts against stored texts across multiple models</p>
           </div>
           <div className="flex gap-2">
             <Button 
