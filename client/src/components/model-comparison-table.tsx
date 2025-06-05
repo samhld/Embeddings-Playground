@@ -194,13 +194,28 @@ export default function ModelComparisonTable({ inputText1, inputText2 }: ModelCo
                     
                     {row.embedding1 && !row.loading1 && (
                       <>
-                        <div className="bg-slate-100 rounded-lg p-3 font-mono text-xs text-slate-700 max-h-24 overflow-y-auto">
-                          <div className="text-slate-500 mb-1">{row.dimensions1}D vector:</div>
-                          [{row.embedding1.slice(0, 3).map((n: number) => n.toFixed(3)).join(', ')}, ...]
-                        </div>
+                        <textarea
+                          className="w-full bg-slate-100 rounded-lg p-3 font-mono text-xs text-slate-700 resize-none border-0 focus:ring-2 focus:ring-primary focus:bg-white transition-all"
+                          value={JSON.stringify(row.embedding1, null, 2)}
+                          readOnly
+                          rows={3}
+                          onFocus={(e) => {
+                            e.target.rows = 8;
+                            e.target.select();
+                          }}
+                          onBlur={(e) => {
+                            e.target.rows = 3;
+                          }}
+                        />
                         
                         <div className="text-xs text-slate-500">
-                          {row.dimensions1}D | {row.processingTime1}ms
+                          {(() => {
+                            const chunks = inputText1.split('\n').filter(chunk => chunk.trim().length > 0);
+                            const chunkCount = chunks.length;
+                            return chunkCount > 1 
+                              ? `${chunkCount}×${row.dimensions1}D | ${row.processingTime1}ms`
+                              : `${row.dimensions1}D | ${row.processingTime1}ms`;
+                          })()}
                         </div>
                       </>
                     )}
@@ -225,13 +240,28 @@ export default function ModelComparisonTable({ inputText1, inputText2 }: ModelCo
                     
                     {row.embedding2 && !row.loading2 && (
                       <>
-                        <div className="bg-slate-100 rounded-lg p-3 font-mono text-xs text-slate-700 max-h-24 overflow-y-auto">
-                          <div className="text-slate-500 mb-1">{row.dimensions2}D vector:</div>
-                          [{row.embedding2.slice(0, 3).map((n: number) => n.toFixed(3)).join(', ')}, ...]
-                        </div>
+                        <textarea
+                          className="w-full bg-slate-100 rounded-lg p-3 font-mono text-xs text-slate-700 resize-none border-0 focus:ring-2 focus:ring-primary focus:bg-white transition-all"
+                          value={JSON.stringify(row.embedding2, null, 2)}
+                          readOnly
+                          rows={3}
+                          onFocus={(e) => {
+                            e.target.rows = 8;
+                            e.target.select();
+                          }}
+                          onBlur={(e) => {
+                            e.target.rows = 3;
+                          }}
+                        />
                         
                         <div className="text-xs text-slate-500">
-                          {row.dimensions2}D | {row.processingTime2}ms
+                          {(() => {
+                            const chunks = inputText2.split('\n').filter(chunk => chunk.trim().length > 0);
+                            const chunkCount = chunks.length;
+                            return chunkCount > 1 
+                              ? `${chunkCount}×${row.dimensions2}D | ${row.processingTime2}ms`
+                              : `${row.dimensions2}D | ${row.processingTime2}ms`;
+                          })()}
                         </div>
                       </>
                     )}
