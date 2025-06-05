@@ -84,14 +84,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const hfData = await hfResponse.json();
         
-        // Handle different response formats from Hugging Face
-        if (Array.isArray(hfData) && hfData.length > 0) {
-          embedding = hfData[0];
-        } else if (hfData.embeddings) {
-          embedding = hfData.embeddings[0];
+        // Handle Hugging Face embedding response format
+        // For BAAI/bge-small-en-v1.5, the response is typically a nested array
+        if (Array.isArray(hfData) && Array.isArray(hfData[0])) {
+          embedding = hfData[0]; // First (and typically only) embedding
         } else if (Array.isArray(hfData)) {
           embedding = hfData;
+        } else if (hfData.embeddings && Array.isArray(hfData.embeddings[0])) {
+          embedding = hfData.embeddings[0];
         } else {
+          console.log('Hugging Face response:', JSON.stringify(hfData).slice(0, 200));
           throw new Error('Unexpected response format from Hugging Face API');
         }
       } else {
