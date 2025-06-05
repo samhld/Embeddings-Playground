@@ -49,6 +49,7 @@ export default function TextComparisonTable() {
   
   const queryFileRef = useRef<HTMLInputElement>(null);
   const storedFileRef = useRef<HTMLInputElement>(null);
+  const csvFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Calculate optimal thresholds function
@@ -216,6 +217,76 @@ export default function TextComparisonTable() {
         await generateDistanceForPair(i, i, model);
       }
     }
+  };
+
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (!content) return;
+
+      try {
+        // Parse CSV content
+        const lines = content.split('\n').filter(line => line.trim());
+        if (lines.length === 0) return;
+
+        // Check if first line looks like headers (contains common header words)
+        const firstLine = lines[0].toLowerCase();
+        const hasHeaders = firstLine.includes('query') || firstLine.includes('stored') || firstLine.includes('related');
+        
+        const dataLines = hasHeaders ? lines.slice(1) : lines;
+        
+        const newQueryTexts: string[] = [];
+        const newStoredTexts: string[] = [];
+        const newRelatedRows: { [key: number]: boolean } = {};
+
+        dataLines.forEach((line, index) => {
+          // Simple CSV parsing (handles basic cases)
+          const columns = line.split(',').map(col => col.trim().replace(/^["']|["']$/g, ''));
+          
+          // Assume first column is query, second is stored, third is related
+          const queryText = columns[0] || '';
+          const storedText = columns[1] || '';
+          const relatedValue = columns[2] || '';
+
+          newQueryTexts.push(queryText);
+          newStoredTexts.push(storedText);
+
+          // Check if related (case insensitive)
+          const isRelated = relatedValue.toLowerCase() === 'related' || relatedValue.toLowerCase() === 'yes';
+          if (isRelated) {
+            newRelatedRows[index] = true;
+          }
+        });
+
+        // Update state
+        setQueryTexts(newQueryTexts);
+        setStoredTexts(newStoredTexts);
+        setRelatedRows(newRelatedRows);
+
+        // Clear existing distances since we have new data
+        setDistances({});
+        setLastCalculatedState({});
+
+        toast({
+          title: "CSV uploaded successfully",
+          description: `Loaded ${dataLines.length} rows of data`,
+        });
+
+      } catch (error) {
+        toast({
+          title: "Error uploading CSV",
+          description: "Please check your CSV format and try again",
+          variant: "destructive",
+        });
+      }
+    };
+
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
   };
 
   const downloadCSV = () => {
@@ -440,6 +511,14 @@ export default function TextComparisonTable() {
           <div className="flex gap-2">
             <Button 
               variant="outline"
+              onClick={() => csvFileRef.current?.click()}
+              className="px-4"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload CSV
+            </Button>
+            <Button 
+              variant="outline"
               onClick={downloadCSV}
               className="px-4"
             >
@@ -454,6 +533,13 @@ export default function TextComparisonTable() {
               <Play className="mr-2 h-4 w-4" />
               {isGenerating ? "Generating..." : "Show Cosine Distances"}
             </Button>
+            <input
+              ref={csvFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleCSVUpload}
+            />
           </div>
         </div>
       </div>
@@ -476,50 +562,10 @@ export default function TextComparisonTable() {
             <tr>
               <th className="w-8 px-1 py-1"></th>
               <th className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span>Query Text</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => queryFileRef.current?.click()}
-                      className="text-xs h-5"
-                    >
-                      <Upload className="mr-1 h-3 w-3" />
-                      Upload
-                    </Button>
-                  </div>
-                  <input
-                    ref={queryFileRef}
-                    type="file"
-                    accept=".txt,.csv"
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(e, 'query')}
-                  />
-                </div>
+                Query Text
               </th>
               <th className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span>Stored Text</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => storedFileRef.current?.click()}
-                      className="text-xs h-5"
-                    >
-                      <Upload className="mr-1 h-3 w-3" />
-                      Upload
-                    </Button>
-                  </div>
-                  <input
-                    ref={storedFileRef}
-                    type="file"
-                    accept=".txt,.csv"
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(e, 'stored')}
-                  />
-                </div>
+                Stored Text
               </th>
               <th className="px-2 py-1 text-center text-xs font-medium text-slate-600 w-12 border-r border-slate-200">
                 <div className="flex justify-center">
