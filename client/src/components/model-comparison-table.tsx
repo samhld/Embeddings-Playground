@@ -158,9 +158,10 @@ export default function ModelComparisonTable({ inputText1, inputText2 }: ModelCo
         <table className="w-full">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-medium text-slate-700 w-1/4">Model</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Embedding Result</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-slate-700 w-24">Actions</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-slate-700 w-1/5">Model</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Embedding Result 1</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-slate-700">Embedding Result 2</th>
+              <th className="px-6 py-3 text-right text-sm font-medium text-slate-700 w-32">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -180,62 +181,118 @@ export default function ModelComparisonTable({ inputText1, inputText2 }: ModelCo
                     </SelectContent>
                   </Select>
                 </td>
+                
+                {/* Embedding Result 1 */}
                 <td className="px-6 py-4">
                   <div className="space-y-2">
-                    {row.loading && (
+                    {row.loading1 && (
                       <div className="flex items-center space-x-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        <span className="text-sm text-slate-600">Generating embedding...</span>
+                        <span className="text-sm text-slate-600">Generating...</span>
                       </div>
                     )}
                     
-                    {row.embedding && !row.loading && (
+                    {row.embedding1 && !row.loading1 && (
                       <>
                         <div className="bg-slate-100 rounded-lg p-3 font-mono text-xs text-slate-700 max-h-24 overflow-y-auto">
-                          <div className="text-slate-500 mb-1">{row.dimensions}-dimensional vector:</div>
-                          [{row.embedding.slice(0, 5).map(n => n.toFixed(4)).join(', ')}, ...]
+                          <div className="text-slate-500 mb-1">{row.dimensions1}D vector:</div>
+                          [{row.embedding1.slice(0, 3).map((n: number) => n.toFixed(3)).join(', ')}, ...]
                         </div>
                         
                         <div className="text-xs text-slate-500">
-                          Dimensions: <span>{row.dimensions}</span> | 
-                          Processing time: <span>{row.processingTime}ms</span>
+                          {row.dimensions1}D | {row.processingTime1}ms
                         </div>
                       </>
                     )}
 
-                    {!row.embedding && !row.loading && row.model && (
+                    {!row.embedding1 && !row.loading1 && row.model && (
                       <div className="text-sm text-slate-500">
-                        Enter text to generate embedding
+                        {inputText1.trim() ? "Ready to generate" : "Enter text 1"}
                       </div>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!row.embedding}
-                    onClick={() => row.embedding && handleCopyEmbedding(row.id, row.embedding)}
-                    className={copiedStates[row.id] ? "text-success border-success" : ""}
-                  >
-                    {copiedStates[row.id] ? (
+
+                {/* Embedding Result 2 */}
+                <td className="px-6 py-4">
+                  <div className="space-y-2">
+                    {row.loading2 && (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span className="text-sm text-slate-600">Generating...</span>
+                      </div>
+                    )}
+                    
+                    {row.embedding2 && !row.loading2 && (
                       <>
-                        <Check className="mr-2 h-4 w-4" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy
+                        <div className="bg-slate-100 rounded-lg p-3 font-mono text-xs text-slate-700 max-h-24 overflow-y-auto">
+                          <div className="text-slate-500 mb-1">{row.dimensions2}D vector:</div>
+                          [{row.embedding2.slice(0, 3).map((n: number) => n.toFixed(3)).join(', ')}, ...]
+                        </div>
+                        
+                        <div className="text-xs text-slate-500">
+                          {row.dimensions2}D | {row.processingTime2}ms
+                        </div>
                       </>
                     )}
-                  </Button>
+
+                    {!row.embedding2 && !row.loading2 && row.model && (
+                      <div className="text-sm text-slate-500">
+                        {inputText2.trim() ? "Ready to generate" : "Enter text 2"}
+                      </div>
+                    )}
+                  </div>
+                </td>
+
+                {/* Actions */}
+                <td className="px-6 py-4 text-right">
+                  <div className="flex flex-col space-y-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!row.embedding1}
+                      onClick={() => row.embedding1 && handleCopyEmbedding(`${row.id}-1`, row.embedding1)}
+                      className={copiedStates[`${row.id}-1`] ? "text-success border-success text-xs" : "text-xs"}
+                    >
+                      {copiedStates[`${row.id}-1`] ? (
+                        <>
+                          <Check className="mr-1 h-3 w-3" />
+                          Copied 1
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-1 h-3 w-3" />
+                          Copy 1
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!row.embedding2}
+                      onClick={() => row.embedding2 && handleCopyEmbedding(`${row.id}-2`, row.embedding2)}
+                      className={copiedStates[`${row.id}-2`] ? "text-success border-success text-xs" : "text-xs"}
+                    >
+                      {copiedStates[`${row.id}-2`] ? (
+                        <>
+                          <Check className="mr-1 h-3 w-3" />
+                          Copied 2
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-1 h-3 w-3" />
+                          Copy 2
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
             
             <tr>
-              <td colSpan={3} className="px-6 py-4">
+              <td colSpan={4} className="px-6 py-4">
                 <Button
                   variant="outline"
                   onClick={addRow}
