@@ -407,23 +407,23 @@ export default function TextComparisonTable() {
         <table className="w-full">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 border-r border-slate-200" colSpan={2}>
+              <th className="px-2 py-1 text-left text-xs font-medium text-slate-700 border-r border-slate-200" colSpan={2}>
                 Text Comparison
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700" colSpan={3}>
+              <th className="px-2 py-1 text-left text-xs font-medium text-slate-700" colSpan={3}>
                 Model Comparison
               </th>
             </tr>
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
-                <div className="space-y-2">
+              <th className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span>Query Text</span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => queryFileRef.current?.click()}
-                      className="text-xs h-6"
+                      className="text-xs h-5"
                     >
                       <Upload className="mr-1 h-3 w-3" />
                       Upload
@@ -438,15 +438,15 @@ export default function TextComparisonTable() {
                   />
                 </div>
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
-                <div className="space-y-2">
+              <th className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span>Stored Text</span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => storedFileRef.current?.click()}
-                      className="text-xs h-6"
+                      className="text-xs h-5"
                     >
                       <Upload className="mr-1 h-3 w-3" />
                       Upload
@@ -462,12 +462,12 @@ export default function TextComparisonTable() {
                 </div>
               </th>
               {["model1", "model2", "model3"].map((modelKey, index) => (
-                <th key={modelKey} className="px-4 py-2 text-left text-xs font-medium text-slate-600 w-1/9">
+                <th key={modelKey} className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/9">
                   <Select 
                     value={selectedModels[modelKey]} 
                     onValueChange={(value) => handleModelChange(modelKey, value)}
                   >
-                    <SelectTrigger className="w-full h-8 text-xs">
+                    <SelectTrigger className="w-full h-6 text-xs">
                       <SelectValue placeholder={`Model ${index + 1}`} />
                     </SelectTrigger>
                     <SelectContent>
@@ -485,55 +485,55 @@ export default function TextComparisonTable() {
           <tbody className="divide-y divide-slate-200">
             {Array.from({ length: maxRows }, (_, rowIndex) => (
               <tr key={rowIndex} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 border-r border-slate-200">
+                <td className="px-2 py-1 border-r border-slate-200">
                   {rowIndex < queryTexts.length ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <Textarea
                         value={queryTexts[rowIndex]}
                         onChange={(e) => updateQueryText(rowIndex, e.target.value)}
                         placeholder="Enter query text..."
-                        className="w-full h-20 text-sm resize-none"
+                        className="w-full h-12 text-xs resize-none p-1"
                       />
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => removeQueryText(rowIndex)}
-                        className="text-xs text-slate-400 hover:text-red-500 h-6"
+                        className="text-xs text-slate-400 hover:text-red-500 h-4 p-0"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   ) : (
-                    <div className="h-20 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
+                    <div className="h-12 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
                   )}
                 </td>
-                <td className="px-4 py-3 border-r border-slate-200">
+                <td className="px-2 py-1 border-r border-slate-200">
                   {rowIndex < storedTexts.length ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <Textarea
                         value={storedTexts[rowIndex]}
                         onChange={(e) => updateStoredText(rowIndex, e.target.value)}
                         placeholder="Enter stored text..."
-                        className="w-full h-20 text-sm resize-none"
+                        className="w-full h-12 text-xs resize-none p-1"
                       />
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => removeStoredText(rowIndex)}
-                        className="text-xs text-slate-400 hover:text-red-500 h-6"
+                        className="text-xs text-slate-400 hover:text-red-500 h-4 p-0"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   ) : (
-                    <div className="h-20 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
+                    <div className="h-12 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
                   )}
                 </td>
                 {["model1", "model2", "model3"].map((modelKey) => {
                   const model = selectedModels[modelKey];
                   if (!model) {
                     return (
-                      <td key={modelKey} className="px-4 py-3 text-center">
+                      <td key={modelKey} className="px-1 py-1 text-center">
                         <div className="text-xs text-slate-400">No model</div>
                       </td>
                     );
@@ -545,7 +545,7 @@ export default function TextComparisonTable() {
                   
                   if (!hasQueryText || !hasStoredText) {
                     return (
-                      <td key={modelKey} className="px-4 py-3 text-center">
+                      <td key={modelKey} className="px-1 py-1 text-center">
                         <div className="text-xs text-slate-400">-</div>
                       </td>
                     );
@@ -556,14 +556,14 @@ export default function TextComparisonTable() {
                   const isLoading = loading[distanceKey];
                   
                   return (
-                    <td key={modelKey} className="px-4 py-3 text-center">
+                    <td key={modelKey} className="px-1 py-1 text-center">
                       {isLoading && (
                         <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
                         </div>
                       )}
                       {!isLoading && distance !== null && distance !== undefined && (
-                        <div className="text-sm font-mono bg-slate-100 rounded p-1">
+                        <div className="text-xs font-mono bg-slate-100 rounded px-1">
                           {distance.toFixed(4)}
                         </div>
                       )}
