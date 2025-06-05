@@ -407,14 +407,16 @@ export default function TextComparisonTable() {
         <table className="w-full">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-2 py-1 text-left text-xs font-medium text-slate-700 border-r border-slate-200" colSpan={2}>
+              <th className="w-8"></th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-slate-700 border-r border-slate-200" colSpan={2}>
                 Text Comparison
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-slate-700" colSpan={3}>
+              <th className="px-2 py-1 text-center text-xs font-medium text-slate-700" colSpan={3}>
                 Model Comparison
               </th>
             </tr>
             <tr>
+              <th className="w-8 px-1 py-1"></th>
               <th className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/3 border-r border-slate-200">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -485,46 +487,41 @@ export default function TextComparisonTable() {
           <tbody className="divide-y divide-slate-200">
             {Array.from({ length: maxRows }, (_, rowIndex) => (
               <tr key={rowIndex} className="hover:bg-slate-50 transition-colors">
+                <td className="w-8 px-1 py-1">
+                  {(rowIndex < queryTexts.length || rowIndex < storedTexts.length) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (rowIndex < queryTexts.length) removeQueryText(rowIndex);
+                        if (rowIndex < storedTexts.length) removeStoredText(rowIndex);
+                      }}
+                      className="text-xs text-slate-400 hover:text-red-500 h-4 w-4 p-0 flex items-center justify-center"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </td>
                 <td className="px-2 py-1 border-r border-slate-200">
                   {rowIndex < queryTexts.length ? (
-                    <div className="space-y-1">
-                      <Textarea
-                        value={queryTexts[rowIndex]}
-                        onChange={(e) => updateQueryText(rowIndex, e.target.value)}
-                        placeholder="Enter query text..."
-                        className="w-full h-12 text-xs resize-none p-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeQueryText(rowIndex)}
-                        className="text-xs text-slate-400 hover:text-red-500 h-4 p-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Textarea
+                      value={queryTexts[rowIndex]}
+                      onChange={(e) => updateQueryText(rowIndex, e.target.value)}
+                      placeholder="Enter query text..."
+                      className="w-full h-12 text-xs resize-none p-1"
+                    />
                   ) : (
                     <div className="h-12 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
                   )}
                 </td>
                 <td className="px-2 py-1 border-r border-slate-200">
                   {rowIndex < storedTexts.length ? (
-                    <div className="space-y-1">
-                      <Textarea
-                        value={storedTexts[rowIndex]}
-                        onChange={(e) => updateStoredText(rowIndex, e.target.value)}
-                        placeholder="Enter stored text..."
-                        className="w-full h-12 text-xs resize-none p-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeStoredText(rowIndex)}
-                        className="text-xs text-slate-400 hover:text-red-500 h-4 p-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Textarea
+                      value={storedTexts[rowIndex]}
+                      onChange={(e) => updateStoredText(rowIndex, e.target.value)}
+                      placeholder="Enter stored text..."
+                      className="w-full h-12 text-xs resize-none p-1"
+                    />
                   ) : (
                     <div className="h-12 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
                   )}
