@@ -6,7 +6,6 @@ import DistanceCalculator from "@/components/distance-calculator";
 
 export default function EmbeddingsPlayground() {
   const [inputText, setInputText] = useState("");
-  const [textChunks, setTextChunks] = useState("");
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -32,8 +31,6 @@ export default function EmbeddingsPlayground() {
         <InputSection 
           inputText={inputText}
           setInputText={setInputText}
-          textChunks={textChunks}
-          setTextChunks={setTextChunks}
         />
 
         {/* Model Comparison Table */}
