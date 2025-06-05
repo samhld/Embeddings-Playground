@@ -29,7 +29,7 @@ interface ModelComparisonTableProps {
 
 const MODELS = [
   { value: "text-embedding-3-small", label: "text-embedding-3-small (1536 dim, $0.02/1M tokens)" },
-  { value: "text-embedding-3-large", label: "text-embedding-3-large (3072 dim, $0.13/1M tokens)" },
+  { value: "text-embedding-3-large", label: "text-embedding-3-large (1536 dim, $0.13/1M tokens)" },
   { value: "text-embedding-ada-002", label: "text-embedding-ada-002 (1536 dim, $0.10/1M tokens)" },
 ];
 

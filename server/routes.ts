@@ -59,10 +59,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate embedding using OpenAI
-      const response = await openai.embeddings.create({
+      const embeddingParams: any = {
         model,
         input: text,
-      });
+      };
+      
+      // Configure dimensions for text-embedding-3-large to use half (1536 instead of 3072)
+      if (model === "text-embedding-3-large") {
+        embeddingParams.dimensions = 1536;
+        console.log(`Setting dimensions to 1536 for text-embedding-3-large`);
+      }
+      
+      console.log(`Embedding params:`, embeddingParams);
+      const response = await openai.embeddings.create(embeddingParams);
+      console.log(`Response embedding length:`, response.data[0].embedding.length);
 
       const embedding = response.data[0].embedding;
       const processingTime = Date.now() - startTime;
