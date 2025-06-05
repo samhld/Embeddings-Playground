@@ -1,8 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Play, Upload, Plus, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,9 +39,53 @@ export default function TextComparisonTable() {
   // Track last calculated state to avoid unnecessary recalculations
   const [lastCalculatedState, setLastCalculatedState] = useState<{ [key: string]: { queryText: string; storedText: string; model: string } }>({});
   
+  // Track which rows are marked as "related"
+  const [relatedRows, setRelatedRows] = useState<{ [key: number]: boolean }>({});
+  
+  // Track optimal thresholds for each model
+  const [optimalThresholds, setOptimalThresholds] = useState<{ [key: string]: number | null }>({});
+  
   const queryFileRef = useRef<HTMLInputElement>(null);
   const storedFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Calculate optimal thresholds function
+  const calculateOptimalThresholds = () => {
+    const activeModels = Object.values(selectedModels).filter(Boolean);
+    const newThresholds: { [key: string]: number | null } = {};
+    
+    activeModels.forEach(model => {
+      const relatedDistances: number[] = [];
+      
+      // Collect distances for rows marked as related
+      Object.keys(relatedRows).forEach(rowIndexStr => {
+        const rowIndex = parseInt(rowIndexStr);
+        if (relatedRows[rowIndex]) {
+          const key = `${rowIndex}-${rowIndex}-${model}`;
+          const distance = distances[key];
+          if (distance !== null && distance !== undefined) {
+            relatedDistances.push(distance);
+          }
+        }
+      });
+      
+      // Calculate optimal threshold as minimum value greater than all related distances
+      if (relatedDistances.length > 0) {
+        const maxRelatedDistance = Math.max(...relatedDistances);
+        // Add small buffer to ensure threshold is greater than all related distances
+        newThresholds[model] = Math.round((maxRelatedDistance + 0.001) * 10000) / 10000;
+      } else {
+        newThresholds[model] = null;
+      }
+    });
+    
+    setOptimalThresholds(newThresholds);
+  };
+
+  // Recalculate optimal thresholds when distances or related rows change
+  useEffect(() => {
+    calculateOptimalThresholds();
+  }, [distances, relatedRows, selectedModels]);
 
   const generateEmbeddingMutation = useMutation({
     mutationFn: async ({ text, model }: { text: string; model: string }) => {
@@ -110,6 +156,13 @@ export default function TextComparisonTable() {
       });
       return updated;
     });
+  };
+
+  const toggleRelated = (rowIndex: number) => {
+    setRelatedRows(prev => ({
+      ...prev,
+      [rowIndex]: !prev[rowIndex]
+    }));
   };
 
   const handleModelChange = (column: string, model: string) => {
@@ -411,6 +464,9 @@ export default function TextComparisonTable() {
               <th className="px-2 py-1 text-center text-xs font-medium text-slate-700 border-r border-slate-200" colSpan={2}>
                 Text Comparison
               </th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-slate-700 w-12 border-r border-slate-200">
+                Related?
+              </th>
               <th className="px-2 py-1 text-center text-xs font-medium text-slate-700" colSpan={3}>
                 Model Comparison
               </th>
@@ -461,6 +517,11 @@ export default function TextComparisonTable() {
                     className="hidden"
                     onChange={(e) => handleFileUpload(e, 'stored')}
                   />
+                </div>
+              </th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-slate-600 w-12 border-r border-slate-200">
+                <div className="flex justify-center">
+                  <Checkbox className="h-3 w-3" disabled />
                 </div>
               </th>
               {["model1", "model2", "model3"].map((modelKey, index) => (
@@ -526,6 +587,18 @@ export default function TextComparisonTable() {
                     <div className="h-12 bg-slate-50 rounded border-2 border-dashed border-slate-200"></div>
                   )}
                 </td>
+                <td className="px-2 py-1 border-r border-slate-200">
+                  <div className="flex justify-center items-center h-12">
+                    {(rowIndex < queryTexts.length && queryTexts[rowIndex].trim()) || 
+                     (rowIndex < storedTexts.length && storedTexts[rowIndex].trim()) ? (
+                      <Checkbox
+                        checked={relatedRows[rowIndex] || false}
+                        onCheckedChange={() => toggleRelated(rowIndex)}
+                        className="h-4 w-4"
+                      />
+                    ) : null}
+                  </div>
+                </td>
                 {["model1", "model2", "model3"].map((modelKey) => {
                   const model = selectedModels[modelKey];
                   if (!model) {
@@ -573,6 +646,35 @@ export default function TextComparisonTable() {
               </tr>
             ))}
           </tbody>
+          <tfoot className="bg-slate-50 border-t border-slate-300">
+            <tr>
+              <td className="w-8 px-1 py-1"></td>
+              <td className="px-2 py-1 text-xs font-medium text-slate-600 border-r border-slate-200">
+                Optimal Threshold
+              </td>
+              <td className="px-2 py-1 border-r border-slate-200"></td>
+              <td className="px-2 py-1 border-r border-slate-200"></td>
+              {["model1", "model2", "model3"].map((modelKey) => {
+                const model = selectedModels[modelKey];
+                const threshold = optimalThresholds[model] || null;
+                
+                return (
+                  <td key={modelKey} className="px-1 py-1 text-center">
+                    {model ? (
+                      <Input
+                        value={threshold !== null ? threshold.toString() : ''}
+                        readOnly
+                        className="w-full h-6 text-xs text-center bg-slate-100 border-slate-300"
+                        placeholder="—"
+                      />
+                    ) : (
+                      <div className="text-xs text-slate-400">—</div>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
         </table>
         
         {/* Add Row Button */}
