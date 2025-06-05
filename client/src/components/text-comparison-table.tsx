@@ -33,6 +33,10 @@ export default function TextComparisonTable() {
   const [distances, setDistances] = useState<{ [key: string]: number | null }>({});
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Track last calculated state to avoid unnecessary recalculations
+  const [lastCalculatedState, setLastCalculatedState] = useState<{ [key: string]: { queryText: string; storedText: string; model: string } }>({});
+  
   const queryFileRef = useRef<HTMLInputElement>(null);
   const storedFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -77,14 +81,86 @@ export default function TextComparisonTable() {
 
   const updateQueryText = (index: number, value: string) => {
     setQueryTexts(prev => prev.map((text, i) => i === index ? value : text));
+    // Clear distances for this row when text changes
+    clearDistancesForRow(index);
   };
 
   const updateStoredText = (index: number, value: string) => {
     setStoredTexts(prev => prev.map((text, i) => i === index ? value : text));
+    // Clear distances for this row when text changes
+    clearDistancesForRow(index);
+  };
+
+  const clearDistancesForRow = (rowIndex: number) => {
+    const activeModels = Object.values(selectedModels).filter(Boolean);
+    setDistances(prev => {
+      const updated = { ...prev };
+      activeModels.forEach(model => {
+        const key = `${rowIndex}-${rowIndex}-${model}`;
+        delete updated[key];
+      });
+      return updated;
+    });
+    
+    setLastCalculatedState(prev => {
+      const updated = { ...prev };
+      activeModels.forEach(model => {
+        const key = `${rowIndex}-${rowIndex}-${model}`;
+        delete updated[key];
+      });
+      return updated;
+    });
   };
 
   const handleModelChange = (column: string, model: string) => {
+    const oldModel = selectedModels[column];
     setSelectedModels(prev => ({ ...prev, [column]: model }));
+    
+    // Clear distances for the old model and trigger recalculation for new model
+    if (oldModel !== model) {
+      clearDistancesForModel(oldModel);
+      if (model) {
+        // Auto-calculate distances for the new model
+        autoCalculateForModel(model);
+      }
+    }
+  };
+
+  const clearDistancesForModel = (model: string) => {
+    if (!model) return;
+    
+    setDistances(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(key => {
+        if (key.endsWith(`-${model}`)) {
+          delete updated[key];
+        }
+      });
+      return updated;
+    });
+    
+    setLastCalculatedState(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(key => {
+        if (key.endsWith(`-${model}`)) {
+          delete updated[key];
+        }
+      });
+      return updated;
+    });
+  };
+
+  const autoCalculateForModel = async (model: string) => {
+    const maxLength = Math.max(queryTexts.length, storedTexts.length);
+    
+    for (let i = 0; i < maxLength; i++) {
+      const queryText = queryTexts[i]?.trim();
+      const storedText = storedTexts[i]?.trim();
+      
+      if (queryText && storedText) {
+        await generateDistanceForPair(i, i, model);
+      }
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'query' | 'stored') => {
@@ -146,13 +222,26 @@ export default function TextComparisonTable() {
     return chunks;
   };
 
-  const generateDistanceForPair = async (queryIndex: number, storedIndex: number, model: string) => {
+  const generateDistanceForPair = async (queryIndex: number, storedIndex: number, model: string, forceRecalculate: boolean = false) => {
     const queryText = queryTexts[queryIndex]?.trim();
     const storedText = storedTexts[storedIndex]?.trim();
     
     if (!queryText || !storedText || !model) return;
 
     const key = `${queryIndex}-${storedIndex}-${model}`;
+    const lastState = lastCalculatedState[key];
+    
+    // Check if we need to recalculate
+    const needsRecalculation = forceRecalculate || 
+      !lastState || 
+      lastState.queryText !== queryText || 
+      lastState.storedText !== storedText || 
+      lastState.model !== model;
+
+    if (!needsRecalculation) {
+      // Distance is already calculated and texts haven't changed
+      return;
+    }
     
     // Set loading state
     setLoading(prev => ({ ...prev, [key]: true }));
@@ -169,6 +258,13 @@ export default function TextComparisonTable() {
       });
 
       setDistances(prev => ({ ...prev, [key]: distanceResult.distance }));
+      
+      // Update the last calculated state
+      setLastCalculatedState(prev => ({
+        ...prev,
+        [key]: { queryText, storedText, model }
+      }));
+      
     } catch (error: any) {
       toast({
         title: "Error",
