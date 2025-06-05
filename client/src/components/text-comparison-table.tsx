@@ -22,6 +22,7 @@ const MODELS = [
   { value: "text-embedding-3-small", label: "text-embedding-3-small" },
   { value: "text-embedding-3-large", label: "text-embedding-3-large" },
   { value: "text-embedding-ada-002", label: "text-embedding-ada-002" },
+  { value: "Alibaba-NLP/gte-Qwen2-7B-instruct", label: "Alibaba-NLP/gte-Qwen2-7B-instruct" },
 ];
 
 export default function TextComparisonTable() {
@@ -30,7 +31,8 @@ export default function TextComparisonTable() {
   const [selectedModels, setSelectedModels] = useState<{ [key: string]: string }>({
     "model1": "",
     "model2": "",
-    "model3": ""
+    "model3": "",
+    "model4": ""
   });
   const [distances, setDistances] = useState<{ [key: string]: number | null }>({});
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
@@ -524,7 +526,7 @@ export default function TextComparisonTable() {
                   <Checkbox className="h-3 w-3" disabled />
                 </div>
               </th>
-              {["model1", "model2", "model3"].map((modelKey, index) => (
+              {["model1", "model2", "model3", "model4"].map((modelKey, index) => (
                 <th key={modelKey} className="px-2 py-1 text-left text-xs font-medium text-slate-600 w-1/9">
                   <Select 
                     value={selectedModels[modelKey]} 
@@ -599,7 +601,7 @@ export default function TextComparisonTable() {
                     ) : null}
                   </div>
                 </td>
-                {["model1", "model2", "model3"].map((modelKey) => {
+                {["model1", "model2", "model3", "model4"].map((modelKey) => {
                   const model = selectedModels[modelKey];
                   if (!model) {
                     return (
